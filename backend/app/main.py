@@ -1,7 +1,14 @@
-from fastapi import FastAPI, Query
+import json
+import os
+import requests
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
 from typing import Optional
+
+load_dotenv()
 
 app = FastAPI(
     title="우리동네 기후·정책 API",
@@ -106,3 +113,78 @@ def create_suggestion(payload: dict):
         "message": "입력 검증 완료. 실제 DB 저장은 아직 구현되지 않았습니다.",
         "received_at": date.today().isoformat(),
     }
+
+
+class NewsDraftRequest(BaseModel):
+    topic: str = Field(min_length=3, max_length=180)
+    region: str = Field(min_length=2, max_length=80)
+    audience: str = Field(default="일반 독자", max_length=100)
+    format: str = Field(default="설명형 뉴스 기사", max_length=100)
+    facts: str = Field(min_length=40, max_length=8000)
+    sources: list[str] = Field(min_length=1, max_length=20)
+
+@app.post("/api/news/draft")
+def create_news_draft(payload: NewsDraftRequest):
+    """Generate an unapproved draft from user-supplied facts; never auto-publish."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="서버의 OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
+    for source in payload.sources:
+        if not source.startswith(("https://", "http://")):
+            raise HTTPException(status_code=422, detail="출처 URL은 http:// 또는 https://로 시작해야 합니다.")
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+    source_list = "\n".join("- " + source for source in payload.sources)
+    system_prompt = (
+        "당신은 근거 중심의 한국어 뉴스 편집자다. 입력된 Fact Sheet만 사실 근거로 사용한다. "
+        "출처 URL의 본문을 실제로 열람했다고 주장하지 말고, 제공되지 않은 수치·인용·사실을 만들지 않는다. "
+        "확인되지 않은 주장은 제외하거나 추가 확인이 필요하다고 명시한다. "
+        "상관관계를 인과관계로 단정하지 않는다. 기사 초안은 사람의 검수를 거쳐야 한다. "
+        'JSON 객체 {"headline":"기사 제목","article":"기사 본문"}만 반환한다.'
+    )
+    user_prompt = (
+        f"주제: {payload.topic}\n지역: {payload.region}\n대상 독자: {payload.audience}\n"
+        f"기사 형식: {payload.format}\n\nFact Sheet:\n{payload.facts}\n\n"
+        f"제공된 원자료 URL(주소 목록일 뿐, 본문을 자동 검증한 것은 아님):\n{source_list}\n\n"
+        "사실에 충실한 한국어 기사 초안을 작성하라. 핵심 수치와 기준 기간을 정확히 유지하고, "
+        "본문 끝에 '편집자 확인 사항'을 짧게 덧붙여 사람이 원문에서 재확인해야 할 점을 제시하라."
+    )
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.3,
+            },
+            timeout=60,
+        )
+        if response.status_code >= 400:
+            detail = "OpenAI API 요청이 거부되었습니다. 모델 접근 권한, API 사용량 및 키 설정을 확인하세요."
+            try:
+                detail = response.json().get("error", {}).get("message", detail)
+            except ValueError:
+                pass
+            raise HTTPException(status_code=502, detail=detail)
+        result = response.json()["choices"][0]["message"]["content"]
+        draft = json.loads(result)
+        if not draft.get("headline") or not draft.get("article"):
+            raise ValueError("headline/article missing")
+        return {
+            "headline": str(draft["headline"])[:220],
+            "article": str(draft["article"])[:16000],
+            "model": model,
+            "status": "draft",
+            "notice": "AI 초안입니다. 원자료 대조와 사람의 최종 승인이 필요하며 자동 게시되지 않았습니다.",
+        }
+    except HTTPException:
+        raise
+    except requests.Timeout:
+        raise HTTPException(status_code=504, detail="기사 생성 시간이 초과되었습니다. 잠시 후 다시 시도하세요.")
+    except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
+        raise HTTPException(status_code=502, detail="기사 초안을 생성하지 못했습니다. 서버 로그와 API 응답을 확인하세요.")
