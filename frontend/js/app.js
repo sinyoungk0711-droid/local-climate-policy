@@ -256,6 +256,21 @@ function nsave(show=true){try{localStorage.setItem('localClimateNewsDraft',JSON.
 function nrestore(){try{const s=JSON.parse(localStorage.getItem('localClimateNewsDraft')||'null');if(!s)return;nfields.forEach(id=>{if(typeof s.fields?.[id]==='string')ne(id).value=s.fields[id];});Object.assign(nw,s.state||{});}catch(e){console.warn('임시 초안을 읽지 못했습니다.',e);}}
 ne('goFacts')?.addEventListener('click',()=>{if(!ne('newsTopic').value.trim()){nmsg('factMessage','기사 주제를 먼저 입력해 주세요.','error');ne('newsTopic').focus();return;}ne('newsFactsPanel').scrollIntoView({behavior:'smooth'});ne('newsFacts').focus();nprogress();});
 ne('saveNewsDraft')?.addEventListener('click',()=>nsave());
+ne('loadClimateFacts')?.addEventListener('click',async()=>{
+ const b=ne('loadClimateFacts'); b.disabled=true; b.textContent='MySQL 자료 조회 중…';
+ const regionNames={'서울특별시':'11','부산광역시':'26','대구광역시':'27','광주광역시':'29','대전광역시':'30','제주특별자치도':'50'};
+ const year=Number(prompt('Fact Sheet 기준 연도를 입력하세요.',String(new Date().getFullYear()-1)));
+ if(!Number.isInteger(year)||year<1900||year>2100){b.disabled=false;b.textContent='MySQL 기후자료로 Fact Sheet 만들기';return;}
+ try{
+  const url='http://127.0.0.1:8000/api/news/facts?region_code='+encodeURIComponent(regionNames[ne('newsRegion').value]||'11')+'&year='+year;
+  const r=await fetch(url),data=await r.json(); if(!r.ok)throw new Error(data.detail||'자료 조회 실패');
+  ne('newsFacts').value=data.facts; ne('newsSources').value=(data.sources||[]).join('\n');
+  ['checkSource','checkDate','checkNumbers'].forEach(id=>ne(id).checked=false);
+  nw.facts=false;nw.draft=false;nw.compare=false;nw.review=false;nw.approved=false;
+  nmsg('factMessage',data.notice+' 확인란은 원문 확인 후 직접 체크하세요.','success');nprogress();
+ }catch(e){nmsg('factMessage','Fact Sheet 생성 실패: '+e.message,'error');}
+ finally{b.disabled=false;b.textContent='MySQL 기후자료로 Fact Sheet 만들기';}
+});
 ne('validateFacts')?.addEventListener('click',()=>{
  const facts=ne('newsFacts').value.trim(),urls=ne('newsSources').value.split(/\n+/).map(x=>x.trim()).filter(Boolean);
  const urlok=urls.length&&urls.every(x=>{try{return ['http:','https:'].includes(new URL(x).protocol);}catch(e){return false;}});
