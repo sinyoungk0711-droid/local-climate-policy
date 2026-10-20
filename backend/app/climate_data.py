@@ -154,3 +154,52 @@ def collect(start_date: str = Query(..., description="YYYYMMDD"),
         raise
     finally:
         conn.close()
+
+
+@router.get("/api/news/facts")
+def build_news_facts(region_code: str = "11", year: int = Query(..., ge=1900, le=2100)):
+    """Build a fact sheet only from stored official observations; does not invent missing values."""
+    if region_code not in STATIONS:
+        raise HTTPException(422, "지원하지 않는 지역 코드입니다.")
+    conn = connect_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT region_id FROM regions WHERE region_code=%s", (region_code,))
+            region = cur.fetchone()
+            if not region:
+                raise HTTPException(503, "database/schema.sql을 먼저 실행하세요.")
+            cur.execute("""SELECT metric_code, AVG(metric_value) avg_value, SUM(metric_value) sum_value,
+                COUNT(metric_value) row_count FROM climate_observations
+                WHERE region_id=%s AND observation_date BETWEEN %s AND %s
+                GROUP BY metric_code""", (region["region_id"], f"{year}-01-01", f"{year}-12-31"))
+            rows = {r["metric_code"]: r for r in cur.fetchall()}
+        facts = [
+            f"지역: {STATIONS[region_code][0]}",
+            f"기준 연도: {year}년",
+            f"자료: {SOURCE_NAME}",
+            f"관측소 번호: {STATIONS[region_code][1]} (해당 지역의 단일 대표 관측소이며 지역 전체 평균이 아님)",
+        ]
+        available = 0
+        for code, label, unit, aggregate in [
+            ("tavg", "일평균기온의 연평균", "°C", "avg_value"),
+            ("rain_mm", "일강수량의 연합계", "mm", "sum_value"),
+            ("heat_day", "일최고기온 33°C 이상 폭염일수", "일", "sum_value"),
+            ("tropical_day", "일최저기온 25°C 이상 열대야일수", "일", "sum_value"),
+        ]:
+            row = rows.get(code)
+            value = row.get(aggregate) if row else None
+            if value is None:
+                facts.append(f"{label}: 자료 없음 (추정하거나 0으로 간주하지 않음)")
+            else:
+                number = round(float(value), 2 if unit == "°C" else 1)
+                facts.append(f"{label}: {number} {unit}")
+                available += 1
+        if available == 0:
+            raise HTTPException(404, f"{year}년 {STATIONS[region_code][0]}의 저장된 기후자료가 없습니다. 먼저 POST /api/climate/collect를 실행하세요.")
+        facts.append("해석 주의: 관측소 1곳의 관측값이며 지역 전체를 대표하는 공간평균이 아니다. 자료의 결측·관측소 대표성을 편집자가 원문과 함께 확인해야 한다.")
+        return {"region_code":region_code,"region_name":STATIONS[region_code][0],"year":year,
+                "facts":"\\n".join(facts),"sources":[SOURCE_URL],
+                "source_name":SOURCE_NAME,"station_code":STATIONS[region_code][1],
+                "notice":"저장된 공식 관측자료로 Fact Sheet를 구성했습니다. 원자료의 결측과 관측소 대표성을 사람 검수로 확인하세요."}
+    finally:
+        conn.close()
