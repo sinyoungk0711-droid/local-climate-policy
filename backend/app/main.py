@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
+from .climate_data import router as climate_router
 from typing import Optional
 
 load_dotenv()
@@ -17,6 +18,8 @@ app = FastAPI(
 )
 
 # 개발용 CORS 설정입니다. 실제 배포에서는 허용할 도메인만 지정하세요.
+app.include_router(climate_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
