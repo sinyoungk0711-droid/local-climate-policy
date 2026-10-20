@@ -1,0 +1,31 @@
+CREATE DATABASE IF NOT EXISTS local_climate_policy DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE local_climate_policy;
+
+-- 1. 사용자 테이블 (회원가입/로그인용)
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    display_name VARCHAR(60) NOT NULL,
+    email VARCHAR(254) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. 지역별 기후 통계 테이블 (기상청/ASOS 데이터 연동용)
+CREATE TABLE IF NOT EXISTS climate_stats (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    region_code VARCHAR(10) NOT NULL, -- 예: 서울 '11', 부산 '26'
+    metric_type VARCHAR(50) NOT NULL, -- temp, rain, heat, tropical
+    year INT NOT NULL,
+    value DECIMAL(5,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. 시민 제안 테이블
+CREATE TABLE IF NOT EXISTS suggestions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category VARCHAR(50) NOT NULL,
+    region VARCHAR(50) NOT NULL,
+    place VARCHAR(120),
+    description TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
