@@ -32,7 +32,6 @@ function setRegion(region) {
   $('#temperature').textContent = '실제 자료는 기후 분석에서 조회';
   $$('.chip').forEach(b => b.classList.toggle('selected', b.dataset.region === region));
 }
-$('#regionSelect').addEventListener('change', e => setRegion(e.target.value));
 $$('.chip').forEach(b => b.addEventListener('click', () => setRegion(b.dataset.region)));
 
 async function renderClimateChart() {
