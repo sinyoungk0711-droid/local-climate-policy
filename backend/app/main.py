@@ -47,29 +47,6 @@ def health():
 def get_regions():
     return {"notice": DEMO_NOTICE, "items": REGIONS}
 
-@app.get("/api/climate")
-def get_climate(
-    region_code: str = Query(default="11", description="지역 코드"),
-    metric: str = Query(default="temp", description="temp, rain, heat, tropical"),
-    start_year: int = Query(default=2016, ge=1900, le=2100),
-    end_year: int = Query(default=2025, ge=1900, le=2100),
-):
-    if start_year > end_year:
-        return {"error": "start_year는 end_year보다 클 수 없습니다."}
-    allowed = {"temp", "rain", "heat", "tropical"}
-    if metric not in allowed:
-        return {"error": f"metric은 {', '.join(sorted(allowed))} 중 하나여야 합니다."}
-    return {
-        "notice": DEMO_NOTICE,
-        "region_code": region_code,
-        "metric": metric,
-        "unit": {"temp": "°C", "rain": "mm", "heat": "일", "tropical": "일"}[metric],
-        "start_year": start_year,
-        "end_year": end_year,
-        "items": [],
-        "message": "실제 데이터베이스 또는 공식 기상 API를 연결하면 items에 자료가 반환됩니다."
-    }
-
 @app.get("/api/issues")
 def get_issues(region_code: Optional[str] = None, category: Optional[str] = None):
     return {
