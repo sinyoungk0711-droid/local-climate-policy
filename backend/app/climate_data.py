@@ -198,7 +198,7 @@ def build_news_facts(region_code: str = "11", year: int = Query(..., ge=1900, le
             raise HTTPException(404, f"{year}년 {STATIONS[region_code][0]}의 저장된 기후자료가 없습니다. 먼저 POST /api/climate/collect를 실행하세요.")
         facts.append("해석 주의: 관측소 1곳의 관측값이며 지역 전체를 대표하는 공간평균이 아니다. 자료의 결측·관측소 대표성을 편집자가 원문과 함께 확인해야 한다.")
         return {"region_code":region_code,"region_name":STATIONS[region_code][0],"year":year,
-                "facts":"\\n".join(facts),"sources":[SOURCE_URL],
+                "facts":"\n".join(facts),"sources":[SOURCE_URL],
                 "source_name":SOURCE_NAME,"station_code":STATIONS[region_code][1],
                 "notice":"저장된 공식 관측자료로 Fact Sheet를 구성했습니다. 원자료의 결측과 관측소 대표성을 사람 검수로 확인하세요."}
     finally:
