@@ -190,3 +190,50 @@ function escapeHtml(s) { return s.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&
 setRegion('서울특별시');
 renderClimateChart();
 renderImpactTable();
+
+// Evidence-based newsroom workflow; API keys remain on the server.
+const nw = {facts:false,draft:false,compare:false,review:false,approved:false};
+const ne = id => document.getElementById(id);
+const nfields = ['newsTopic','newsRegion','newsAudience','newsFormat','newsFacts','newsSources','newsHeadline','newsArticle','editorNotes'];
+function nmsg(id,text,kind='info'){const e=ne(id);if(e){e.textContent=text;e.className='inline-message '+kind;}}
+function nprogress(){
+ const topic=!!ne('newsTopic').value.trim(), vals=[topic,nw.facts,nw.draft,nw.compare,nw.review,nw.approved];
+ [['stateTopic',vals[0]],['stateFacts',vals[1]],['stateDraft',vals[2]],['stateCompare',vals[3]],['stateReview',vals[4]],['stateApprove',vals[5]]].forEach(([id,ok])=>{ne(id).textContent=ok?'완료':'대기';ne(id).classList.toggle('done',ok);});
+ $$('.workflow-step').forEach(s=>{const i=Number(s.dataset.stage)-1;s.classList.toggle('complete',!!vals[i]);s.classList.toggle('active',!vals[i]&&(i===0||vals.slice(0,i).every(Boolean)));});
+ ne('newsStatus').textContent=nw.approved?'최종 승인':nw.review?'검수 완료':nw.draft?'초안 작성':nw.facts?'자료 확인':topic?'작성 중':'작성 중';
+}
+function ncollect(){return Object.fromEntries(nfields.map(id=>[id,ne(id)?.value||'']));}
+function nsave(show=true){try{localStorage.setItem('localClimateNewsDraft',JSON.stringify({fields:ncollect(),state:nw,savedAt:new Date().toISOString()}));if(show)nmsg('approvalMessage','현재 브라우저에 임시 저장했습니다. 서버에는 저장되지 않습니다.','success');}catch(e){nmsg('approvalMessage','브라우저 임시 저장에 실패했습니다.','error');}}
+function nrestore(){try{const s=JSON.parse(localStorage.getItem('localClimateNewsDraft')||'null');if(!s)return;nfields.forEach(id=>{if(typeof s.fields?.[id]==='string')ne(id).value=s.fields[id];});Object.assign(nw,s.state||{});}catch(e){console.warn('임시 초안을 읽지 못했습니다.',e);}}
+ne('goFacts')?.addEventListener('click',()=>{if(!ne('newsTopic').value.trim()){nmsg('factMessage','기사 주제를 먼저 입력해 주세요.','error');ne('newsTopic').focus();return;}ne('newsFactsPanel').scrollIntoView({behavior:'smooth'});ne('newsFacts').focus();nprogress();});
+ne('saveNewsDraft')?.addEventListener('click',()=>nsave());
+ne('validateFacts')?.addEventListener('click',()=>{
+ const facts=ne('newsFacts').value.trim(),urls=ne('newsSources').value.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+ const urlok=urls.length&&urls.every(x=>{try{return ['http:','https:'].includes(new URL(x).protocol);}catch(e){return false;}});
+ if(!ne('newsTopic').value.trim())return nmsg('factMessage','기사 주제를 입력해 주세요.','error');
+ if(facts.length<40)return nmsg('factMessage','핵심 사실·수치·기간을 40자 이상 입력해 주세요.','error');
+ if(!urlok)return nmsg('factMessage','올바른 HTTP/HTTPS 원자료 URL을 한 개 이상 입력해 주세요.','error');
+ if(!['checkSource','checkDate','checkNumbers'].every(id=>ne(id).checked))return nmsg('factMessage','출처·기준일/단위·수치 대조 확인란을 모두 체크해 주세요.','error');
+ nw.facts=true;nw.draft=false;nw.compare=false;nw.review=false;nw.approved=false;
+ nmsg('factMessage','입력 및 사용자 확인 체크를 통과했습니다. 자동 사실검증이 완료된 것은 아닙니다.','success');nprogress();
+});
+ne('generateNews')?.addEventListener('click',async()=>{
+ if(!nw.facts)return nmsg('factMessage','먼저 Fact Sheet 확인을 완료해 주세요.','error');
+ const b=ne('generateNews');b.disabled=true;b.textContent='기사 생성 중…';nmsg('factMessage','FastAPI 서버에 기사 초안을 요청합니다.');
+ try{
+  const r=await fetch('http://127.0.0.1:8000/api/news/draft',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:ne('newsTopic').value.trim(),region:ne('newsRegion').value,audience:ne('newsAudience').value,format:ne('newsFormat').value,facts:ne('newsFacts').value.trim(),sources:ne('newsSources').value.split(/\n+/).map(x=>x.trim()).filter(Boolean)})});
+  const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'API 요청 실패');
+  ne('newsHeadline').value=data.headline||ne('newsTopic').value.trim();ne('newsArticle').value=data.article||data.draft||'';
+  if(!ne('newsArticle').value)throw new Error('응답에 기사 본문이 없습니다.');
+  nw.draft=true;nw.compare=false;nw.review=false;nw.approved=false;nmsg('factMessage','AI 초안이 생성되었습니다. 원자료와 직접 대조해 주세요.','success');ne('newsArticle').scrollIntoView({behavior:'smooth'});nsave(false);nprogress();
+ }catch(e){nmsg('factMessage','기사 생성 실패: '+e.message+'. FastAPI 실행과 OPENAI_API_KEY 설정을 확인하세요.','error');}
+ finally{b.disabled=false;b.textContent='OpenAI로 기사 초안 생성';}
+});
+ne('compareNews')?.addEventListener('click',()=>{if(!ne('newsArticle').value.trim())return nmsg('reviewMessage','먼저 기사 초안을 작성해 주세요.','error');ne('comparisonChecks').classList.remove('hidden');ne('comparisonChecks').scrollIntoView({behavior:'smooth'});});
+$$('.comparison-check').forEach(c=>c.addEventListener('change',()=>{nw.compare=$$('.comparison-check').every(x=>x.checked);if(!nw.compare){nw.review=false;nw.approved=false;}else nmsg('reviewMessage','체크리스트 완료 표시입니다. 편집자가 실제 원문 대조를 수행해야 합니다.','success');nprogress();}));
+ne('markReviewed')?.addEventListener('click',()=>{if(!ne('newsHeadline').value.trim()||!ne('newsArticle').value.trim())return nmsg('reviewMessage','제목과 본문을 먼저 작성해 주세요.','error');if(!nw.compare){ne('comparisonChecks').classList.remove('hidden');return nmsg('reviewMessage','원자료 대조 체크리스트를 모두 완료해 주세요.','error');}nw.review=true;nw.approved=false;nmsg('reviewMessage','사람 검수 완료로 표시했습니다. 최종 승인 전까지 게시 확정본이 아닙니다.','success');nprogress();nsave(false);});
+ne('approveNews')?.addEventListener('click',()=>{if(!nw.review)return nmsg('approvalMessage','원자료 대조와 사람 검수를 먼저 완료해 주세요.','error');if(!ne('editorApproval').checked)return nmsg('approvalMessage','최종 승인 확인란을 체크해 주세요.','error');nw.approved=true;nprogress();nmsg('approvalMessage','최종 승인 상태입니다. 실제 게시 및 서버 이력 저장은 실행하지 않습니다.','success');nsave(false);});
+ne('exportNews')?.addEventListener('click',()=>{const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),fields:ncollect(),workflow:nw,notice:'브라우저에서 내보낸 검수 기록이며 서버 게시 이력이 아닙니다.'},null,2)],{type:'application/json;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='local-climate-news-review.json';a.click();URL.revokeObjectURL(url);});
+ne('resetNews')?.addEventListener('click',()=>{if(!confirm('현재 기사 작업을 초기화할까요?'))return;nfields.forEach(id=>{if(ne(id))ne(id).value='';});['checkSource','checkDate','checkNumbers','editorApproval'].forEach(id=>ne(id).checked=false);$$('.comparison-check').forEach(c=>c.checked=false);ne('comparisonChecks').classList.add('hidden');Object.keys(nw).forEach(k=>nw[k]=false);localStorage.removeItem('localClimateNewsDraft');['factMessage','reviewMessage','approvalMessage'].forEach(id=>nmsg(id,''));nprogress();});
+nfields.forEach(id=>ne(id)?.addEventListener('input',()=>{if(['newsFacts','newsSources','newsTopic'].includes(id)){nw.facts=false;nw.draft=false;nw.compare=false;nw.review=false;nw.approved=false;}if(['newsHeadline','newsArticle'].includes(id)){nw.review=false;nw.approved=false;}nprogress();}));
+nrestore();nprogress();
