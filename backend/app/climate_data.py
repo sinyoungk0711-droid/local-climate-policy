@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime
 import requests
 import pymysql
@@ -6,6 +7,7 @@ from pymysql.cursors import DictCursor
 from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 STATIONS = {
     "11": ("서울특별시", "108"), "26": ("부산광역시", "159"),
     "27": ("대구광역시", "143"), "29": ("광주광역시", "156"),
@@ -88,8 +90,17 @@ def collect(start_date: str = Query(..., description="YYYYMMDD"),
     conn = connect_db()
     count = 0
     days = 0
+    collected_at = datetime.now()
     try:
         with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO collection_logs
+                   (source_name, source_url, requested_start_date, requested_end_date,
+                    region_codes, status, started_at)
+                   VALUES (%s,%s,%s,%s,%s,'running',NOW())""",
+                (SOURCE_NAME, SOURCE_URL, start, end, ",".join(codes)),
+            )
+            run_id = cur.lastrowid
             cur.execute("SELECT source_id FROM data_sources WHERE source_name=%s AND source_url=%s LIMIT 1", (SOURCE_NAME, SOURCE_URL))
             src = cur.fetchone()
             source_id = src["source_id"] if src else None
@@ -135,23 +146,45 @@ def collect(start_date: str = Query(..., description="YYYYMMDD"),
                             try: value = float(raw)
                             except (TypeError,ValueError): continue
                             cur.execute("""INSERT INTO climate_observations
-                                (region_id,source_id,station_code,metric_code,observation_date,aggregation_period,metric_value,unit,quality_flag)
-                                VALUES (%s,%s,%s,%s,%s,'daily',%s,%s,'raw_kma')
-                                ON DUPLICATE KEY UPDATE metric_value=VALUES(metric_value),unit=VALUES(unit),quality_flag='raw_kma'""",
-                                (region["region_id"],source_id,STATIONS[code][1],metric_code,day,value,unit))
+                                (region_id,source_id,station_code,metric_code,observation_date,aggregation_period,metric_value,unit,quality_flag,collected_at)
+                                VALUES (%s,%s,%s,%s,%s,'daily',%s,%s,'raw_kma',%s)
+                                ON DUPLICATE KEY UPDATE metric_value=VALUES(metric_value),unit=VALUES(unit),quality_flag='raw_kma',collected_at=VALUES(collected_at)""",
+                                (region["region_id"],source_id,STATIONS[code][1],metric_code,day,value,unit,collected_at))
                             count += 1
                         days += 1
                     total = body.get("totalCount")
                     if total is None or page * 999 >= int(total) or len(records) < 999: break
                     page += 1
+            cur.execute(
+                """UPDATE collection_logs SET status='success', api_days_processed=%s,
+                   metric_rows_upserted=%s, finished_at=NOW(), message=%s WHERE collection_id=%s""",
+                (days, count, "수집 완료; 결측값은 0으로 대체하지 않음", run_id),
+            )
             conn.commit()
         return {"ok":True,"source":SOURCE_NAME,"source_url":SOURCE_URL,
                 "date_range":{"start":start.isoformat(),"end":end.isoformat()},
                 "regions":[STATIONS[c][0] for c in codes],"api_days_processed":days,
-                "metric_rows_upserted":count,"message":"공식 ASOS 일자료를 MySQL에 저장했습니다. 결측일은 0으로 대체하지 않았습니다."}
-    except Exception:
+                "metric_rows_upserted":count,"collected_at":collected_at.isoformat(timespec="seconds"),
+                "message":"공식 ASOS 일자료를 MySQL에 저장했습니다. 결측일은 0으로 대체하지 않았습니다."}
+    except Exception as exc:
         conn.rollback()
-        raise
+        logger.exception("ASOS collection failed for %s..%s regions=%s", start, end, codes)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO collection_logs
+                       (source_name, source_url, requested_start_date, requested_end_date,
+                        region_codes, status, started_at, finished_at, error_message)
+                       VALUES (%s,%s,%s,%s,%s,'failed',NOW(),NOW(),%s)""",
+                    (SOURCE_NAME, SOURCE_URL, start, end, ",".join(codes), str(exc)[:1000]),
+                )
+                conn.commit()
+        except Exception:
+            conn.rollback()
+            logger.exception("Could not persist ASOS collection failure log")
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(500, "기후자료 수집·저장에 실패했습니다. collection_logs와 서버 로그를 확인하세요.")
     finally:
         conn.close()
 
