@@ -186,6 +186,57 @@ def get_article(article_id: int):
     finally:
         conn.close()
 
+
+class ArticleEdit(BaseModel):
+    topic: str = Field(min_length=3, max_length=180)
+    region_code: str = Field(min_length=2, max_length=10)
+    headline: str = Field(min_length=3, max_length=220)
+    article: str = Field(min_length=30, max_length=16000)
+    facts: str = Field(min_length=10, max_length=10000)
+    sources: list[str] = Field(min_length=1, max_length=20)
+
+@router.put("/news/articles/{article_id}")
+def update_article(article_id: int, payload: ArticleEdit):
+    validate_sources(payload.sources)
+    conn = db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT article_id FROM news_articles WHERE article_id=%s", (article_id,))
+            if not cur.fetchone():
+                raise HTTPException(404, "기사를 찾을 수 없습니다.")
+            cur.execute("""UPDATE news_articles SET topic=%s, region_code=%s, headline=%s,
+                article_body=%s, facts=%s, sources_json=%s, review_status='pending',
+                reviewer=NULL, review_note=NULL, reviewed_at=NULL, updated_at=NOW()
+                WHERE article_id=%s""",
+                (payload.topic, payload.region_code, payload.headline, payload.article,
+                 payload.facts, json.dumps(payload.sources, ensure_ascii=False), article_id))
+            conn.commit()
+        return {"ok": True, "article_id": article_id, "review_status": "pending",
+                "notice": "수정된 기사는 재검수가 필요하므로 검수 대기 상태로 전환했습니다."}
+    except pymysql.MySQLError:
+        conn.rollback()
+        logger.exception("Article update failed")
+        raise HTTPException(500, "기사 수정에 실패했습니다.")
+    finally:
+        conn.close()
+
+@router.delete("/news/articles/{article_id}")
+def delete_article(article_id: int):
+    conn = db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM news_articles WHERE article_id=%s", (article_id,))
+            if cur.rowcount == 0:
+                raise HTTPException(404, "기사를 찾을 수 없습니다.")
+            conn.commit()
+        return {"ok": True, "article_id": article_id, "deleted": True}
+    except pymysql.MySQLError:
+        conn.rollback()
+        logger.exception("Article deletion failed")
+        raise HTTPException(500, "기사 삭제에 실패했습니다.")
+    finally:
+        conn.close()
+
 @router.patch("/news/articles/{article_id}/review")
 def review_article(article_id: int, payload: ReviewUpdate):
     conn = db()
