@@ -129,8 +129,8 @@ let activeIssueFilter = 'all';
 let issueMarkers = [];
 function applyIssueFilter(filter) {
   activeIssueFilter = filter;
-  $('.filter-chip').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
-  $('.issue-detail-card').forEach(card => {
+  $$('.filter-chip').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+  $$('.issue-detail-card').forEach(card => {
     const category = ({1:'heat',2:'flood',3:'green',4:'people'})[card.dataset.issue];
     card.classList.toggle('hidden', filter !== 'all' && category !== filter);
   });
@@ -141,14 +141,14 @@ function applyIssueFilter(filter) {
     else marker.remove();
   });
 }
-$('.filter-chip').forEach(btn => btn.addEventListener('click', () => applyIssueFilter(btn.dataset.filter)));
+$$('.filter-chip').forEach(btn => btn.addEventListener('click', () => applyIssueFilter(btn.dataset.filter)));
 
 function filterPolicies() {
   const q = $('#policySearch').value.trim().toLowerCase();
   const cat = $('#policyCategory').value;
   const region = $('#policyRegion').value;
   let count = 0;
-  $('.policy-card').forEach(card => {
+  $$('.policy-card').forEach(card => {
     // Demo policy cards have no verified region assignment. Do not present them as region-specific.
     const regionMatch = region === '전체 지역' || card.dataset.region === region;
     const visible = regionMatch &&
