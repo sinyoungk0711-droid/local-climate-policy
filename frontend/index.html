@@ -23,9 +23,28 @@
       <button class="nav-link" data-screen="news">AI 기사 제작</button>
     </nav>
     <button class="icon-button" aria-label="검색" id="focusSearch">⌕</button>
-    <span class="login-pill">●　로그인 / 회원가입</span>
+    <div class="auth-actions"><span class="auth-user hidden" id="authUser" aria-live="polite"></span><button class="login-pill" id="openLogin">로그인</button><button class="signup-pill" id="openSignup">회원가입</button><button class="login-pill hidden" id="logoutButton">로그아웃</button></div>
     <button class="mobile-menu" id="mobileMenu" aria-label="메뉴 열기">☰</button>
   </header>
+
+  <div class="auth-overlay hidden" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <section class="auth-dialog">
+      <button type="button" class="auth-close" id="closeAuth" aria-label="닫기">×</button>
+      <div class="auth-brand">🌎 우리동네 기후·정책</div>
+      <h2 id="authTitle">로그인</h2>
+      <p class="auth-description" id="authDescription">계정에 로그인하고 서비스를 이용하세요.</p>
+      <form id="authForm">
+        <div class="auth-field hidden" id="displayNameField"><label for="authDisplayName">닉네임</label><input id="authDisplayName" name="display_name" minlength="2" maxlength="60" autocomplete="nickname" placeholder="표시할 이름" /></div>
+        <div class="auth-field"><label for="authEmail">이메일</label><input id="authEmail" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="name@example.com" /></div>
+        <div class="auth-field"><label for="authPassword">비밀번호</label><input id="authPassword" name="password" type="password" required minlength="10" maxlength="128" autocomplete="current-password" placeholder="10자 이상 입력" /></div>
+        <p class="auth-hint hidden" id="passwordHint">계정 보호를 위해 10자 이상 비밀번호를 사용하세요.</p>
+        <button class="primary-button full-width" type="submit" id="authSubmit">로그인</button>
+        <div class="auth-message" id="authMessage" role="status" aria-live="polite"></div>
+      </form>
+      <p class="auth-switch" id="authSwitchText">계정이 없으신가요? <button type="button" id="switchSignup">회원가입</button></p>
+      <p class="auth-privacy">비밀번호는 서버에서 해시 처리됩니다. 다른 사람과 공유하는 기기에서는 로그아웃하세요.</p>
+    </section>
+  </div>
 
   <main>
     <section class="screen active" id="screen-home">
