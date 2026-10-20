@@ -90,6 +90,7 @@ def collect(start_date: str = Query(..., description="YYYYMMDD"),
     conn = connect_db()
     count = 0
     days = 0
+    missing_values_skipped = 0
     collected_at = datetime.now()
     try:
         with conn.cursor() as cur:
@@ -142,9 +143,13 @@ def collect(start_date: str = Query(..., description="YYYYMMDD"),
                             if item.get("minTa") not in (None,"") and float(item["minTa"]) >= 25: vals.append(("tropical_day",1,"일"))
                         except (TypeError,ValueError): pass
                         for metric_code, raw, unit in vals:
-                            if raw in (None,""): continue
+                            if raw in (None,""):
+                                missing_values_skipped += 1
+                                continue
                             try: value = float(raw)
-                            except (TypeError,ValueError): continue
+                            except (TypeError,ValueError):
+                                missing_values_skipped += 1
+                                continue
                             cur.execute("""INSERT INTO climate_observations
                                 (region_id,source_id,station_code,metric_code,observation_date,aggregation_period,metric_value,unit,quality_flag,collected_at)
                                 VALUES (%s,%s,%s,%s,%s,'daily',%s,%s,'raw_kma',%s)
@@ -158,13 +163,13 @@ def collect(start_date: str = Query(..., description="YYYYMMDD"),
             cur.execute(
                 """UPDATE collection_logs SET status='success', api_days_processed=%s,
                    metric_rows_upserted=%s, finished_at=NOW(), message=%s WHERE collection_id=%s""",
-                (days, count, "수집 완료; 결측값은 0으로 대체하지 않음", run_id),
+                (days, count, f"수집 완료; 결측/비수치 항목 {missing_values_skipped}건 제외, 0으로 대체하지 않음", run_id),
             )
             conn.commit()
         return {"ok":True,"source":SOURCE_NAME,"source_url":SOURCE_URL,
                 "date_range":{"start":start.isoformat(),"end":end.isoformat()},
                 "regions":[STATIONS[c][0] for c in codes],"api_days_processed":days,
-                "metric_rows_upserted":count,"collected_at":collected_at.isoformat(timespec="seconds"),
+                "metric_rows_upserted":count,"missing_values_skipped":missing_values_skipped,"collected_at":collected_at.isoformat(timespec="seconds"),
                 "message":"공식 ASOS 일자료를 MySQL에 저장했습니다. 결측일은 0으로 대체하지 않았습니다."}
     except Exception as exc:
         conn.rollback()
