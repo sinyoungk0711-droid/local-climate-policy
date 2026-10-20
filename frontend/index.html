@@ -189,7 +189,7 @@
             <label class="news-field">핵심 사실·수치·기준일<textarea id="newsFacts" rows="7" maxlength="8000" placeholder="예: ① 지표명과 수치 ② 해당 지역·기간 ③ 전년/평년 대비 값 ④ 자료를 발표한 기관 ⑤ 확인되지 않은 사항"></textarea></label>
             <label class="news-field">원자료 URL (한 줄에 하나씩)<textarea id="newsSources" rows="3" maxlength="4000" placeholder="https://data.kma.go.kr/&#10;https://www.data.go.kr/"></textarea></label>
             <div class="fact-check-list"><label><input type="checkbox" id="checkSource"> 출처 기관과 원문을 직접 확인했습니다.</label><label><input type="checkbox" id="checkDate"> 자료 기준일·집계 기간·단위를 확인했습니다.</label><label><input type="checkbox" id="checkNumbers"> 기사에 사용할 수치를 원자료와 대조했습니다.</label></div>
-            <div class="news-actions"><button class="secondary-button" id="validateFacts">Fact Sheet 확인</button><button class="primary-button" id="generateNews">OpenAI로 기사 초안 생성</button></div>
+            <div class="news-actions"><button class="secondary-button" id="loadClimateFacts">MySQL 기후자료로 Fact Sheet 만들기</button><button class="secondary-button" id="validateFacts">Fact Sheet 확인</button><button class="primary-button" id="generateNews">OpenAI로 기사 초안 생성</button></div>
             <p class="inline-message" id="factMessage" role="status"></p>
           </article>
           <article class="panel news-panel">
