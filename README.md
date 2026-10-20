@@ -344,3 +344,57 @@ Invoke-RestMethod -Method Post -Uri ("http://127.0.0.1:8000/api/climate/collect?
 ```
 
 같은 기간을 다시 수집해도 고유키에 맞는 기존 관측값을 갱신합니다. 실제 실행 결과는 공공데이터포털 인증키, MySQL 서버와 스키마 설정에 따라 달라집니다.
+
+
+## 단계별 구현: CRUD → OpenWeather/Fact Sheet → 기사 검수
+
+### 1차 — FastAPI + MySQL CRUD
+- 기존 기후 자료 API 유지: `GET /api/climate`, `POST /api/climate/collect`
+- 기사 CRUD: `POST/GET /api/news/articles`, `GET/PUT/DELETE /api/news/articles/{article_id}`
+- 기사 수정 시 검수 상태를 `pending`으로 되돌립니다.
+- 지역/기간별 Fact Sheet: `GET /api/news/facts?region_code=11&year=2024`
+
+### 2차 — OpenWeather 수집
+- `POST /api/weather/collect?region_code=11`: 현재 날씨를 OpenWeather에서 가져와 MySQL에 저장합니다.
+- `GET /api/weather?region_code=11&limit=50`: 저장된 날씨 스냅샷을 조회합니다.
+- 지원 지역 코드는 `11` 서울, `26` 부산, `27` 대구, `29` 광주, `30` 대전, `50` 제주입니다.
+- `OPENWEATHER_API_KEY`를 `.env`에 설정하고 `database/migrations/003_weather_news_workflow.sql`을 실행해야 합니다.
+- OpenWeather 자료는 도시 중심 좌표의 현재 날씨 스냅샷입니다. 시·도 전체 평균이나 장기 기후 관측값으로 해석하지 마세요. 강수량은 API 응답에 1시간 강수량이 있을 때만 저장합니다.
+
+### 3차 — 기사 검수 상태
+- 기사 저장 시 기본 상태는 `pending`입니다.
+- `PATCH /api/news/articles/{article_id}/review`로 상태를 `approved` 또는 `on_hold`로 변경할 수 있습니다.
+- 검수 요청 JSON 예시:
+
+```json
+{
+  "status": "approved",
+  "reviewer": "편집자",
+  "review_note": "원자료의 수치와 기준 기간을 대조했습니다."
+}
+```
+
+- 상태별 목록: `GET /api/news/articles?status=pending`, `approved`, `on_hold`
+- 검수 이력은 `news_reviews`에 별도 저장합니다.
+- 승인 상태는 편집 승인 표시일 뿐, 자동 게시 기능을 실행하지 않습니다.
+
+### 마이그레이션과 로컬 테스트
+
+1. 기존 DB를 백업한 뒤 MySQL Workbench에서 `database/migrations/003_weather_news_workflow.sql`을 실행합니다.
+2. `.env.example`을 참고해 로컬 `.env`에 DB 설정과 `OPENWEATHER_API_KEY`를 설정합니다.
+3. `pip install -r backend/requirements.txt` 실행 후 프로젝트 루트에서 `uvicorn backend.app.main:app --reload`로 서버를 시작합니다.
+4. `http://127.0.0.1:8000/docs`에서 각 엔드포인트를 순서대로 실행합니다.
+
+권장 테스트 순서:
+- `GET /api/health`
+- `POST /api/weather/collect?region_code=11`
+- `GET /api/weather?region_code=11`
+- `GET /api/news/facts?region_code=11&year=2024` (먼저 ASOS 수집 필요)
+- `POST /api/news/articles`로 초안 저장
+- `GET /api/news/articles` 및 상세 조회
+- `PATCH /api/news/articles/{article_id}/review`로 보류 후 승인 상태 저장
+- `PUT` 수정 시 검수 대기로 돌아가는지 확인
+- `DELETE`로 테스트 기사를 삭제
+
+### 테스트 현황
+이 저장소 변경은 코드와 마이그레이션 파일을 추가한 상태입니다. 이 작업 환경에서는 프로젝트의 MySQL 인스턴스, OpenWeather 키 및 로컬 브라우저에 접속할 수 없어 실서비스 API 호출이나 DB 통합 테스트를 실행한 것으로 보고하지 않습니다. 위 테스트 순서를 로컬에서 실행하고 응답 결과를 확인해야 합니다.
