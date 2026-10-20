@@ -297,3 +297,16 @@ local-climate-policy/
 6. 지표 정의: 평균기온은 일평균기온의 연평균, 강수량은 일강수량의 연합계, 폭염일수는 일최고기온 33°C 이상인 날, 열대야일수는 일최저기온 25°C 이상인 날입니다. 결측일은 0으로 채우지 않습니다.
 
 자료 출처: https://data.kma.go.kr/ 및 https://www.data.go.kr/. 광역지역은 대표 관측소 한 곳의 값이며 지역 전체 공간평균은 아닙니다. 기사에 사용하기 전 관측소·기간·단위·결측 여부를 사람이 확인해야 합니다. 수집 API는 로컬 개발용이므로 공개 배포 전 인증·호출 제한을 추가하세요.
+
+
+## 회원가입 및 로그인
+
+- 회원가입 API: `POST /api/auth/register`
+- 로그인 API: `POST /api/auth/login`
+- 현재 사용자 조회: `GET /api/auth/me` (Bearer 토큰 필요)
+- 로그아웃: 브라우저 세션 토큰 삭제 후 `POST /api/auth/logout`
+- 이메일 중복을 검사하고 비밀번호는 Python `hashlib.scrypt`로 해시하여 MySQL에 저장합니다.
+- 로그인 토큰은 12시간 유효한 HMAC-SHA256 서명 토큰이며 브라우저 `sessionStorage`에 보관됩니다. 서버 재시작이나 로그아웃으로 토큰 자체를 폐기하는 방식은 아니며, 브라우저가 토큰을 삭제합니다.
+- `database/schema.sql`을 실행해 `users` 및 `user_preferences` 테이블을 생성합니다. 기존 DB에 테이블이 이미 만들어져 있다면 새 테이블 생성 SQL만 실행해야 합니다.
+- `.env`에 최소 32자 이상의 임의 `AUTH_SECRET_KEY`를 추가하세요. 예: `py -c "import secrets; print(secrets.token_urlsafe(48))"`. 실제 키는 GitHub에 올리지 마세요.
+- 인증 UI/API는 기본 기능을 제공하는 개발용 구현입니다. 공개 배포 전에는 HTTPS, 로그인 시도 제한, 이메일 인증·비밀번호 재설정, CSRF/XSS 검토, 보안 로그 및 개인정보 처리 안내를 추가하세요. 기존 지역기후/정책 화면은 공개 상태이며, 회원 인증만으로 기능 접근이 제한되지는 않습니다.
