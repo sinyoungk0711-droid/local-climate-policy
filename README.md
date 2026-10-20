@@ -243,7 +243,7 @@ Python 3.12가 설치되어 있지 않으면 `py --list`로 사용 가능한 버
 3. `.env.example`을 참고해 프로젝트 루트에 `.env`를 만듭니다.
 4. DB 접속 정보가 실제 백엔드 코드에서 읽히는지 확인합니다.
 
-스키마 실행은 테이블 생성 단계이며, API가 MySQL에 자동으로 연결되거나 데이터가 자동 수집된다는 뜻은 아닙니다. DB 연결 및 CRUD 기능은 코드 구현 상태를 확인해야 합니다.
+현재 백엔드는 MySQL 연결, 기상청 ASOS 일자료 수집(`/api/climate/collect`), 연도별 조회(`/api/climate`), 저장된 관측값 기반 Fact Sheet 생성(`/api/news/facts`)을 제공합니다. 실행하려면 MySQL과 공공데이터포털 API 키를 먼저 설정해야 합니다.
 
 ### 6.5 OpenAI API 설정
 
@@ -270,6 +270,7 @@ local-climate-policy/
 │   └── js/app.js
 ├── backend/
 │   ├── app/main.py
+│   ├── app/climate_data.py
 │   └── requirements.txt
 ├── database/
 │   └── schema.sql
@@ -279,12 +280,11 @@ local-climate-policy/
 
 ## 개발 상태 및 다음 단계
 
-1. 공식 기후·지역 통계·정책 자료원을 확정합니다.
-2. CSV/API/PDF 수집과 출처·기준일 기록을 구현합니다.
-3. MySQL 연결 및 데이터 검증·조회 API를 테스트합니다.
-4. 프런트엔드를 실제 API 데이터와 연결합니다.
-5. Fact Sheet 검증, OpenAI 기사 초안 생성, 원자료 대조, 사람 검수 절차를 구현합니다.
-6. 보안·개인정보·데이터 품질 점검 후 공개 범위를 결정합니다.
+1. 로컬 환경에서 MySQL과 기상청 API 키를 설정하고 실제 수집을 실행합니다.
+2. 그래프에 저장된 값이 표시되는지 확인하고, 자료의 기간·단위·결측·관측소 대표성을 검수합니다.
+3. AI 기사 화면에서 MySQL 자료로 Fact Sheet를 만들고 확인된 사실을 원자료와 대조합니다.
+4. OpenAI API 키를 설정해 기사 초안을 생성한 뒤 사람의 최종 검수를 수행합니다.
+5. 실제 게시 기능은 별도 구현이며, 공개 전 API 인증·호출 제한·로그·데이터 품질을 점검합니다.
 
 
 ## 공식 기후자료 수집 및 MySQL 연결
