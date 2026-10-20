@@ -2,6 +2,17 @@ CREATE DATABASE IF NOT EXISTS local_climate_policy
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE local_climate_policy;
 
+CREATE TABLE IF NOT EXISTS users (
+  user_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(254) NOT NULL UNIQUE,
+  display_name VARCHAR(60) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_users_active (is_active)
+);
+
 CREATE TABLE regions (
   region_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   region_code VARCHAR(20) NOT NULL UNIQUE,
@@ -10,6 +21,16 @@ CREATE TABLE regions (
   region_level VARCHAR(20) NOT NULL,
   CONSTRAINT fk_regions_parent FOREIGN KEY (parent_region_id)
     REFERENCES regions(region_id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+  user_id BIGINT UNSIGNED NOT NULL,
+  region_id BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id),
+  CONSTRAINT fk_user_preferences_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  CONSTRAINT fk_user_preferences_region FOREIGN KEY (region_id) REFERENCES regions(region_id) ON DELETE SET NULL
 );
 
 CREATE TABLE data_sources (
