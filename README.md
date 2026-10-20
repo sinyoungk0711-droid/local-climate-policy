@@ -307,6 +307,6 @@ local-climate-policy/
 - 로그아웃: 브라우저 세션 토큰 삭제 후 `POST /api/auth/logout`
 - 이메일 중복을 검사하고 비밀번호는 Python `hashlib.scrypt`로 해시하여 MySQL에 저장합니다.
 - 로그인 토큰은 12시간 유효한 HMAC-SHA256 서명 토큰이며 브라우저 `sessionStorage`에 보관됩니다. 서버 재시작이나 로그아웃으로 토큰 자체를 폐기하는 방식은 아니며, 브라우저가 토큰을 삭제합니다.
-- `database/schema.sql`을 실행해 `users` 및 `user_preferences` 테이블을 생성합니다. 기존 DB에 테이블이 이미 만들어져 있다면 새 테이블 생성 SQL만 실행해야 합니다.
+- 처음 DB를 만들 때는 `database/schema.sql`을 실행합니다. 기존 DB를 유지하면서 인증만 추가한다면 `database/migrations/001_auth.sql`만 실행하세요.
 - `.env`에 최소 32자 이상의 임의 `AUTH_SECRET_KEY`를 추가하세요. 예: `py -c "import secrets; print(secrets.token_urlsafe(48))"`. 실제 키는 GitHub에 올리지 마세요.
 - 인증 UI/API는 기본 기능을 제공하는 개발용 구현입니다. 공개 배포 전에는 HTTPS, 로그인 시도 제한, 이메일 인증·비밀번호 재설정, CSRF/XSS 검토, 보안 로그 및 개인정보 처리 안내를 추가하세요. 기존 지역기후/정책 화면은 공개 상태이며, 회원 인증만으로 기능 접근이 제한되지는 않습니다.
