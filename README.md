@@ -310,3 +310,37 @@ local-climate-policy/
 - 처음 DB를 만들 때는 `database/schema.sql`을 실행합니다. 기존 DB를 유지하면서 인증만 추가한다면 `database/migrations/001_auth.sql`만 실행하세요.
 - `.env`에 최소 32자 이상의 임의 `AUTH_SECRET_KEY`를 추가하세요. 예: `py -c "import secrets; print(secrets.token_urlsafe(48))"`. 실제 키는 GitHub에 올리지 마세요.
 - 인증 UI/API는 기본 기능을 제공하는 개발용 구현입니다. 공개 배포 전에는 HTTPS, 로그인 시도 제한, 이메일 인증·비밀번호 재설정, CSRF/XSS 검토, 보안 로그 및 개인정보 처리 안내를 추가하세요. 기존 지역기후/정책 화면은 공개 상태이며, 회원 인증만으로 기능 접근이 제한되지는 않습니다.
+
+
+## 공식 기후자료 수집·저장 구현 상태 (2026-10-20)
+
+기존 수집 API를 중복 생성하지 않고 `POST /api/climate/collect`와 `GET /api/climate`를 유지했습니다.
+
+- 공식 출처: 기상청 기상자료개방포털 ASOS 일자료 API
+- 수집 API: `POST /api/climate/collect?start_date=20240101&end_date=20241231&region_code=11`
+- 재수집: 동일한 지역·관측소·지표·관측일·주기의 UNIQUE 키와 `ON DUPLICATE KEY UPDATE`로 기존 관측값을 갱신합니다.
+- 출처: `data_sources`에 출처명과 URL을 저장합니다.
+- 수집 시각: `climate_observations.collected_at`에 저장합니다.
+- 결측: 결측·비수치 값은 저장하지 않고 0으로 채우지 않으며, API 응답의 `missing_values_skipped`에 건수를 표시합니다.
+- 오류 로그: `collection_logs`에 성공/실패 상태, 요청 기간, 지역, 시작·종료 시각, 처리 건수 및 오류 메시지를 저장합니다. 서버 로그에도 예외를 기록합니다.
+
+### 데이터베이스 설정 / 기존 DB 업그레이드
+
+저장소에 기존 문서에서 참조하던 `database/schema.sql`이 없고 `database/schema.spl`만 있던 문제를 보완했습니다. `database/schema.sql`은 현재 FastAPI 코드와 호환되는 정식 스키마이며, `regions`, `data_sources`, `climate_observations`, `collection_logs`, `users`를 생성합니다. 기존 호환 테이블은 `CREATE TABLE IF NOT EXISTS`로 보존합니다.
+
+- 새 DB 또는 개발용 DB: MySQL Workbench에서 `database/schema.sql` 실행
+- 기존 DB: 먼저 백업하고 테이블/컬럼/인덱스를 확인하세요. `database/migrations/002_climate_collection_logs.sql`은 수집 로그 테이블을 추가합니다. 기존 `climate_observations`에 `collected_at`이 없다면 마이그레이션 주석의 ALTER 문을 확인 후 실행하세요. 기존 중복 자료가 있으면 UNIQUE 인덱스를 추가하기 전에 중복을 정리해야 합니다.
+- `database/schema.spl`은 예전 초안이므로 새 실행 안내에서는 `database/schema.sql`을 사용합니다.
+
+### 수집 실행
+
+1. `.env`에 `KMA_SERVICE_KEY`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`를 설정합니다.
+2. `uvicorn backend.app.main:app --reload`로 API를 실행합니다.
+3. `http://127.0.0.1:8000/docs`에서 `POST /api/climate/collect`를 실행하거나 PowerShell에서 호출합니다.
+
+```powershell
+$body = "start_date=20240101&end_date=20241231&region_code=11"
+Invoke-RestMethod -Method Post -Uri ("http://127.0.0.1:8000/api/climate/collect?" + $body)
+```
+
+같은 기간을 다시 수집해도 고유키에 맞는 기존 관측값을 갱신합니다. 실제 실행 결과는 공공데이터포털 인증키, MySQL 서버와 스키마 설정에 따라 달라집니다.
