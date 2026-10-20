@@ -1,13 +1,12 @@
 const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
 
-const demoClimate = {
-  temp: {label:'평균기온 (°C)', title:'연도별 평균기온 추이', data:[12.1,12.4,12.0,12.8,13.0,12.7,13.2,13.5,13.7,14.0]},
-  rain: {label:'강수량 (mm)', title:'연도별 강수량 추이', data:[1320,1450,1180,1510,1390,1280,1610,1430,1550,1490]},
-  heat: {label:'폭염일수 (일)', title:'연도별 폭염일수 추이', data:[8,10,7,12,11,9,14,16,13,18]},
-  tropical: {label:'열대야일수 (일)', title:'연도별 열대야일수 추이', data:[6,7,8,9,7,10,12,11,14,15]}
+const metricFallback = {
+  temp: {label:'평균기온 (°C)', title:'연도별 평균기온 추이'},
+  rain: {label:'강수량 (mm)', title:'연도별 강수량 추이'},
+  heat: {label:'폭염일수 (일)', title:'연도별 폭염일수 추이'},
+  tropical: {label:'열대야일수 (일)', title:'연도별 열대야일수 추이'}
 };
-const years = ['2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
 let climateChart = null;
 let impactChart = null;
 let map = null;
@@ -26,46 +25,56 @@ $$('[data-screen]').forEach(el => el.addEventListener('click', () => showScreen(
 $('#mobileMenu').addEventListener('click', () => $('.main-nav').classList.toggle('open'));
 $('#focusSearch').addEventListener('click', () => { showScreen('policies'); $('#policySearch').focus(); });
 
-const regionTemps = {'서울특별시':'18.5°C','부산광역시':'20.1°C','대구광역시':'19.8°C','광주광역시':'19.2°C','대전광역시':'18.9°C','제주특별자치도':'21.0°C'};
 function setRegion(region) {
   $('#regionSelect').value = region;
   $('#climateRegion').value = region;
-  $('#homeRegionLabel').textContent = `${region} · 예시`;
-  $('#temperature').textContent = regionTemps[region] || '자료 연동 전';
+  $('#homeRegionLabel').textContent = region + ' · 기상청 자료';
+  $('#temperature').textContent = '실제 자료는 기후 분석에서 조회';
   $$('.chip').forEach(b => b.classList.toggle('selected', b.dataset.region === region));
 }
 $('#regionSelect').addEventListener('change', e => setRegion(e.target.value));
 $$('.chip').forEach(b => b.addEventListener('click', () => setRegion(b.dataset.region)));
 
-function renderClimateChart() {
+async function renderClimateChart() {
   const ctx = $('#climateChart');
   if (!ctx) return;
   if (!window.Chart) {
     const note = ctx.parentElement.querySelector('.chart-load-note') || document.createElement('p');
     note.className = 'chart-load-note footnote';
-    note.textContent = '그래프 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 페이지를 새로고침해 주세요.';
+    note.textContent = '그래프 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침해 주세요.';
     if (!note.parentElement) ctx.insertAdjacentElement('afterend', note);
     return;
   }
-  const oldNote = ctx.parentElement.querySelector('.chart-load-note');
-  if (oldNote) oldNote.remove();
-  const key = $('#metricSelect').value;
-  const metric = demoClimate[key];
+  const key = $('#metricSelect').value, metric = metricFallback[key];
   const period = Number($('#periodSelect').value);
-  const labels = years.slice(-period);
-  const values = metric.data.slice(-period);
+  const region = $('#climateRegion').value || $('#regionSelect').value || '서울특별시';
+  const codes = {'서울특별시':'11','부산광역시':'26','대구광역시':'27','광주광역시':'29','대전광역시':'30','제주특별자치도':'50'};
+  const endYear = new Date().getFullYear() - 1, startYear = endYear - period + 1;
   $('#chartTitle').textContent = metric.title;
-  $('#chartLegend').textContent = `${metric.label} · 예시`;
-  if (climateChart) climateChart.destroy();
-  climateChart = new Chart(ctx, {
-    type:'line',
-    data:{labels,datasets:[{label:metric.label,data:values,borderColor:'#2176ee',backgroundColor:'rgba(33,118,238,.12)',fill:true,tension:.32,pointRadius:3,pointBackgroundColor:'#2176ee'}]},
-    options:{responsive:true,interaction:{intersect:false,mode:'index'},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toLocaleString()}`}}},scales:{y:{beginAtZero:key!=='temp',grid:{color:'#edf2f8'}},x:{grid:{display:false}}}}
-  });
+  $('#chartLegend').textContent = metric.label + ' · 기상청 ASOS / MySQL';
+  try {
+    const url = 'http://127.0.0.1:8000/api/climate?region_code=' + encodeURIComponent(codes[region] || '11') + '&metric=' + key + '&start_year=' + startYear + '&end_year=' + endYear;
+    const response = await fetch(url), data = await response.json();
+    if (!response.ok) throw new Error(data.detail || '기후 API 요청 실패');
+    const items = data.items || [], labels = items.map(x => String(x.year)), values = items.map(x => x.value);
+    const note = ctx.parentElement.querySelector('.chart-load-note') || document.createElement('p');
+    note.className = 'chart-load-note footnote'; note.textContent = data.notice || '';
+    if (!note.parentElement) ctx.insertAdjacentElement('afterend', note);
+    if (climateChart) climateChart.destroy();
+    climateChart = new Chart(ctx, {type:'line',data:{labels:labels,datasets:[{label:metric.label,data:values,borderColor:'#2176ee',backgroundColor:'rgba(33,118,238,.12)',fill:true,tension:.32,spanGaps:false,pointRadius:3}]},
+      options:{responsive:true,interaction:{intersect:false,mode:'index'},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y == null ? '자료 없음' : c.dataset.label + ': ' + c.parsed.y.toLocaleString()}}},scales:{y:{beginAtZero:key!=='temp',grid:{color:'#edf2f8'}},x:{grid:{display:false}}}}});
+  } catch (error) {
+    if (climateChart) { climateChart.destroy(); climateChart = null; }
+    const note = ctx.parentElement.querySelector('.chart-load-note') || document.createElement('p');
+    note.className = 'chart-load-note footnote';
+    note.textContent = '실제 기후 자료를 불러오지 못했습니다: ' + error.message + '. FastAPI·MySQL·공식 API 설정을 확인하세요.';
+    if (!note.parentElement) ctx.insertAdjacentElement('afterend', note);
+  }
 }
 $('#metricSelect').addEventListener('change', renderClimateChart);
 $('#periodSelect').addEventListener('change', renderClimateChart);
-$('#climateRegion').addEventListener('change', e => { setRegion(e.target.value); });
+$('#climateRegion').addEventListener('change', e => { setRegion(e.target.value); renderClimateChart(); });
+$('#regionSelect').addEventListener('change', e => { setRegion(e.target.value); renderClimateChart(); });
 
 const issueInfo = {
   1:{title:'도심 폭염·열섬 문제',subtitle:'기온, 녹지, 토지이용 자료를 함께 확인해야 합니다.',category:'폭염·도시환경'},
