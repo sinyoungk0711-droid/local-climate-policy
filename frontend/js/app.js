@@ -300,3 +300,119 @@ ne('exportNews')?.addEventListener('click',()=>{const blob=new Blob([JSON.string
 ne('resetNews')?.addEventListener('click',()=>{if(!confirm('현재 기사 작업을 초기화할까요?'))return;nfields.forEach(id=>{if(ne(id))ne(id).value='';});['checkSource','checkDate','checkNumbers','editorApproval'].forEach(id=>ne(id).checked=false);$$('.comparison-check').forEach(c=>c.checked=false);ne('comparisonChecks').classList.add('hidden');Object.keys(nw).forEach(k=>nw[k]=false);localStorage.removeItem('localClimateNewsDraft');['factMessage','reviewMessage','approvalMessage'].forEach(id=>nmsg(id,''));nprogress();});
 nfields.forEach(id=>ne(id)?.addEventListener('input',()=>{if(['newsFacts','newsSources','newsTopic'].includes(id)){nw.facts=false;nw.draft=false;nw.compare=false;nw.review=false;nw.approved=false;}if(['newsHeadline','newsArticle'].includes(id)){nw.review=false;nw.approved=false;}nprogress();}));
 nrestore();nprogress();
+
+
+// Account registration and login (FastAPI + MySQL)
+const AUTH_API = 'http://127.0.0.1:8000/api/auth';
+const AUTH_TOKEN_KEY = 'localClimateSessionToken';
+const authOverlay = $('#authOverlay');
+let authMode = 'login';
+let authToken = sessionStorage.getItem(AUTH_TOKEN_KEY) || '';
+let authUser = null;
+
+function authMessage(message, kind='') {
+  const el = $('#authMessage');
+  if (!el) return;
+  el.textContent = message;
+  el.className = 'auth-message' + (kind ? ' ' + kind : '');
+}
+function setAuthMode(mode) {
+  authMode = mode;
+  const signup = mode === 'signup';
+  $('#authTitle').textContent = signup ? '회원가입' : '로그인';
+  $('#authDescription').textContent = signup ? '이메일과 닉네임을 등록해 계정을 만드세요.' : '계정에 로그인하고 서비스를 이용하세요.';
+  $('#displayNameField').classList.toggle('hidden', !signup);
+  $('#passwordHint').classList.toggle('hidden', !signup);
+  $('#authDisplayName').required = signup;
+  $('#authPassword').autocomplete = signup ? 'new-password' : 'current-password';
+  $('#authSubmit').textContent = signup ? '회원가입' : '로그인';
+  $('#authSwitchText').innerHTML = signup ? '이미 계정이 있으신가요? <button type="button" id="switchLogin">로그인</button>' : '계정이 없으신가요? <button type="button" id="switchSignup">회원가입</button>';
+  authMessage('');
+  const switchButton = signup ? $('#switchLogin') : $('#switchSignup');
+  switchButton?.addEventListener('click', () => setAuthMode(signup ? 'login' : 'signup'));
+}
+function openAuth(mode='login') {
+  setAuthMode(mode);
+  authOverlay.classList.remove('hidden');
+  setTimeout(() => (mode === 'signup' ? $('#authDisplayName') : $('#authEmail')).focus(), 0);
+}
+function closeAuth() {
+  authOverlay.classList.add('hidden');
+  $('#authForm').reset();
+  authMessage('');
+}
+function renderAuthState() {
+  const loggedIn = Boolean(authUser);
+  $('#openLogin').classList.toggle('hidden', loggedIn);
+  $('#openSignup').classList.toggle('hidden', loggedIn);
+  $('#logoutButton').classList.toggle('hidden', !loggedIn);
+  $('#authUser').classList.toggle('hidden', !loggedIn);
+  $('#authUser').textContent = loggedIn ? authUser.display_name + ' 님' : '';
+  $('#authUser').title = loggedIn ? authUser.email : '';
+}
+async function authRequest(path, body) {
+  let response;
+  try {
+    response = await fetch(AUTH_API + path, {
+      method: body ? 'POST' : 'GET',
+      headers: {'Content-Type':'application/json', ...(authToken ? {'Authorization':'Bearer '+authToken} : {})},
+      ...(body ? {body:JSON.stringify(body)} : {})
+    });
+  } catch {
+    throw new Error('API 서버에 연결할 수 없습니다. FastAPI가 실행 중인지 확인하세요.');
+  }
+  let data = {};
+  try { data = await response.json(); } catch {}
+  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '요청을 처리하지 못했습니다.');
+  return data;
+}
+function applyAuth(data) {
+  authToken = data.access_token;
+  authUser = data.user;
+  sessionStorage.setItem(AUTH_TOKEN_KEY, authToken);
+  renderAuthState();
+}
+$('#openLogin').addEventListener('click', () => openAuth('login'));
+$('#openSignup').addEventListener('click', () => openAuth('signup'));
+$('#closeAuth').addEventListener('click', closeAuth);
+authOverlay.addEventListener('click', e => { if (e.target === authOverlay) closeAuth(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !authOverlay.classList.contains('hidden')) closeAuth(); });
+$('#authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const button = $('#authSubmit');
+  button.disabled = true;
+  authMessage(authMode === 'signup' ? '계정을 생성하고 있습니다…' : '로그인 중…');
+  const payload = {email:$('#authEmail').value.trim(), password:$('#authPassword').value};
+  if (authMode === 'signup') payload.display_name = $('#authDisplayName').value.trim();
+  try {
+    const data = await authRequest(authMode === 'signup' ? '/register' : '/login', payload);
+    applyAuth(data);
+    authMessage(authMode === 'signup' ? '회원가입이 완료되었습니다.' : '로그인되었습니다.', 'success');
+    setTimeout(closeAuth, 450);
+  } catch (error) {
+    authMessage(error.message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
+$('#logoutButton').addEventListener('click', async () => {
+  try { if (authToken) await authRequest('/logout', {}); } catch {}
+  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  authToken = '';
+  authUser = null;
+  renderAuthState();
+});
+async function restoreAuthSession() {
+  if (!authToken) { renderAuthState(); return; }
+  try {
+    const data = await authRequest('/me');
+    authUser = data.user;
+  } catch {
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    authToken = '';
+    authUser = null;
+  }
+  renderAuthState();
+}
+renderAuthState();
+restoreAuthSession();
