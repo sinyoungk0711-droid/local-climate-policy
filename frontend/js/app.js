@@ -39,7 +39,16 @@ $$('.chip').forEach(b => b.addEventListener('click', () => setRegion(b.dataset.r
 
 function renderClimateChart() {
   const ctx = $('#climateChart');
-  if (!ctx || !window.Chart) return;
+  if (!ctx) return;
+  if (!window.Chart) {
+    const note = ctx.parentElement.querySelector('.chart-load-note') || document.createElement('p');
+    note.className = 'chart-load-note footnote';
+    note.textContent = '그래프 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 페이지를 새로고침해 주세요.';
+    if (!note.parentElement) ctx.insertAdjacentElement('afterend', note);
+    return;
+  }
+  const oldNote = ctx.parentElement.querySelector('.chart-load-note');
+  if (oldNote) oldNote.remove();
   const key = $('#metricSelect').value;
   const metric = demoClimate[key];
   const period = Number($('#periodSelect').value);
@@ -89,8 +98,13 @@ function initMap() {
       [37.5700,127.0200,'도심 폭염·열섬',1,'#ef5350'],
       [37.5450,126.9500,'집중호우·침수',2,'#2788ef']
     ];
-    points.forEach(p => L.circleMarker([p[0],p[1]],{radius:8,color:p[4],fillColor:p[4],fillOpacity:.8,weight:2}).addTo(map)
-      .bindPopup(`<b>${p[2]}</b><br><small>시연용 마커 · 실제 위험 위치 아님</small><br><button onclick="window.openIssue(${p[3]})">상세 보기</button>`));
+    issueMarkers = points.map(p => {
+      const category = ({1:'heat',2:'flood',3:'green',4:'people'})[p[3]];
+      const marker = L.circleMarker([p[0],p[1]],{radius:8,color:p[4],fillColor:p[4],fillOpacity:.8,weight:2}).addTo(map)
+        .bindPopup(`<b>${p[2]}</b><br><small>시연용 마커 · 실제 위험 위치 아님</small><br><button onclick="window.openIssue(${p[3]})">상세 보기</button>`);
+      return {marker, category};
+    });
+    applyIssueFilter(activeIssueFilter);
     mapInitialized = true;
   } else {
     setTimeout(() => map.invalidateSize(), 100);
@@ -103,27 +117,44 @@ window.openIssue = id => {
   $('#issueCategory').textContent = info.category;
   showScreen('detail');
 };
-$$('.filter-chip').forEach(btn => btn.addEventListener('click', () => {
-  $$('.filter-chip').forEach(b => b.classList.toggle('active', b === btn));
-  const filter = btn.dataset.filter;
-  $$('.issue-detail-card').forEach(card => {
-    const id = card.dataset.issue;
-    const category = ({1:'heat',2:'flood',3:'green',4:'people'})[id];
+let activeIssueFilter = 'all';
+let issueMarkers = [];
+function applyIssueFilter(filter) {
+  activeIssueFilter = filter;
+  $('.filter-chip').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+  $('.issue-detail-card').forEach(card => {
+    const category = ({1:'heat',2:'flood',3:'green',4:'people'})[card.dataset.issue];
     card.classList.toggle('hidden', filter !== 'all' && category !== filter);
   });
-}));
+  issueMarkers.forEach(({marker, category}) => {
+    const visible = filter === 'all' || category === filter;
+    marker.setStyle({opacity: visible ? 1 : 0, fillOpacity: visible ? 0.8 : 0});
+    if (visible) marker.addTo(map);
+    else marker.remove();
+  });
+}
+$('.filter-chip').forEach(btn => btn.addEventListener('click', () => applyIssueFilter(btn.dataset.filter)));
 
 function filterPolicies() {
   const q = $('#policySearch').value.trim().toLowerCase();
   const cat = $('#policyCategory').value;
+  const region = $('#policyRegion').value;
   let count = 0;
-  $$('.policy-card').forEach(card => {
-    const visible = (cat === 'all' || card.dataset.category === cat) && (card.dataset.search + ' ' + card.innerText).toLowerCase().includes(q);
+  $('.policy-card').forEach(card => {
+    // Demo policy cards have no verified region assignment. Do not present them as region-specific.
+    const regionMatch = region === '전체 지역' || card.dataset.region === region;
+    const visible = regionMatch &&
+      (cat === 'all' || card.dataset.category === cat) &&
+      (card.dataset.search + ' ' + card.innerText).toLowerCase().includes(q);
     card.classList.toggle('hidden', !visible);
     if (visible) count++;
   });
   $('#policyEmpty').classList.toggle('hidden', count > 0);
+  $('#policyEmpty').textContent = region !== '전체 지역' && count === 0
+    ? '선택한 지역에 연결된 검증된 정책 자료가 없습니다. 현재 정책 카드는 지역 미지정 예시입니다.'
+    : '검색 결과가 없습니다. 검색어나 분야를 바꿔보세요.';
 }
+$('#policyRegion').addEventListener('change', filterPolicies);
 $('#policySearch').addEventListener('input', filterPolicies);
 $('#policyCategory').addEventListener('change', filterPolicies);
 $$('.policy-impact').forEach(btn => btn.addEventListener('click', () => {
@@ -150,7 +181,16 @@ function renderImpactTable() {
 }
 function renderImpactChart() {
   const ctx = $('#impactChart');
-  if (!ctx || !window.Chart) return;
+  if (!ctx) return;
+  if (!window.Chart) {
+    const note = ctx.parentElement.querySelector('.chart-load-note') || document.createElement('p');
+    note.className = 'chart-load-note footnote';
+    note.textContent = '그래프 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 페이지를 새로고침해 주세요.';
+    if (!note.parentElement) ctx.insertAdjacentElement('afterend', note);
+    return;
+  }
+  const oldNote = ctx.parentElement.querySelector('.chart-load-note');
+  if (oldNote) oldNote.remove();
   const metric = $('#impactMetric').value;
   const values = impactSamples[$('#impactPolicy').value][metric];
   if (impactChart) impactChart.destroy();
