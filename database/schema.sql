@@ -36,7 +36,8 @@ CREATE TABLE climate_observations (
   CONSTRAINT fk_climate_region FOREIGN KEY (region_id) REFERENCES regions(region_id),
   CONSTRAINT fk_climate_source FOREIGN KEY (source_id) REFERENCES data_sources(source_id),
   INDEX idx_climate_region_metric_date (region_id, metric_code, observation_date),
-  INDEX idx_climate_station_date (station_code, observation_date)
+  INDEX idx_climate_station_date (station_code, observation_date),
+  UNIQUE KEY uq_climate_observation (region_id, source_id, station_code, metric_code, observation_date)
 );
 
 CREATE TABLE regional_issues (
