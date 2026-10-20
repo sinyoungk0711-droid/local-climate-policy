@@ -160,6 +160,7 @@ LLM이 만든 문장을 사실로 간주하지 않습니다. 원자료로 확인
 ```dotenv
 OPENAI_API_KEY=발급받은_API_키
 OPENAI_MODEL=gpt-4.1-mini
+KMA_SERVICE_KEY=공공데이터포털_기상청_ASOS_API_일반인증키
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_NAME=local_climate_policy
@@ -284,3 +285,14 @@ local-climate-policy/
 4. 프런트엔드를 실제 API 데이터와 연결합니다.
 5. Fact Sheet 검증, OpenAI 기사 초안 생성, 원자료 대조, 사람 검수 절차를 구현합니다.
 6. 보안·개인정보·데이터 품질 점검 후 공개 범위를 결정합니다.
+
+
+## 공식 기후자료 수집 및 MySQL 연결
+
+1. 공공데이터포털에서 기상청 ASOS 일자료 조회서비스를 신청하고 서비스 키를 발급받습니다.
+2. `.env`에 `KMA_SERVICE_KEY`와 MySQL 접속 정보를 설정하고 `database/schema.sql`을 실행합니다.
+3. FastAPI를 실행한 뒤 `http://127.0.0.1:8000/docs`에서 `POST /api/climate/collect`를 실행합니다. `start_date=20240101`, `end_date=20241231`, `region_code=11`을 예시로 사용할 수 있습니다. 지역 코드를 생략하면 등록된 6개 관측소를 수집합니다.
+4. 프런트엔드 기후 분석 화면은 `GET /api/climate`에서 MySQL의 연도별 자료를 조회합니다. 데이터가 없으면 안내문을 표시하며 예시값으로 대체하지 않습니다.
+5. 지표 정의: 평균기온은 일평균기온의 연평균, 강수량은 일강수량의 연합계, 폭염일수는 일최고기온 33°C 이상인 날, 열대야일수는 일최저기온 25°C 이상인 날입니다. 결측일은 0으로 채우지 않습니다.
+
+자료 출처: https://data.kma.go.kr/ 및 https://www.data.go.kr/. 광역지역은 대표 관측소 한 곳의 값이며 지역 전체 공간평균은 아닙니다. 기사에 사용하기 전 관측소·기간·단위·결측 여부를 사람이 확인해야 합니다. 수집 API는 로컬 개발용이므로 공개 배포 전 인증·호출 제한을 추가하세요.
