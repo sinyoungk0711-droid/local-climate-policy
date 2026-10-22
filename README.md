@@ -414,24 +414,14 @@ Invoke-RestMethod -Method Post -Uri ("http://127.0.0.1:8000/api/climate/collect?
 
 ### 2. 외부 자료·서비스의 출처와 사용 조건
 
-자료별 출처와 사용 조건은 아래와 같습니다. 실제 API 이용은 계정의 승인·구독 조건을 따릅니다.
-
-| 자료·서비스 | 출처 | 저장소에서 확인한 용도 | 사용 조건 및 확인 상태 |
-|---|---|---|---|
-| 기상청 ASOS 일자료 | [공공데이터포털의 해당 API](https://www.data.go.kr/data/15059093/openapi.do) · [기상자료개방포털](https://data.kma.go.kr/) | `backend/app/climate_data.py`에서 일자료 수집, MySQL 저장, 연도별 집계·Fact Sheet 생성 | 공식 API 안내는 **공공저작물 출처표시 제1유형**입니다. 제공기관과 원자료 출처를 표시하고, 인증키·승인된 호출 한도를 준수합니다. 별도 파일·통계를 추가하면 해당 자료의 조건을 다시 확인합니다. |
-| OpenWeather Current Weather API | [자료 설명](https://openweathermap.org/current) · [라이선스·출처 표시 안내](https://openweathermap.org/faq#license) | `backend/app/workflow.py`에서 도시 중심 좌표의 현재 날씨와 원본 JSON 저장 | 가입 요금제와 계약에 따른 조건을 따릅니다. 공식 FAQ는 Free~Professional 요금제에 출처 문구·링크·로고 표시를 요구합니다. **이 프로젝트 계정의 실제 요금제, 저장·재배포 허용 범위 및 적용 라이선스는 확인 필요**입니다. |
-| OpenStreetMap 지도 데이터 | [OpenStreetMap 저작권·라이선스](https://www.openstreetmap.org/copyright) | `frontend/js/app.js`의 Leaflet 지도 배경 | 지도 데이터는 **ODbL**입니다. OpenStreetMap 기여자 출처와 라이선스 안내를 표시해야 합니다. 원본·파생 데이터베이스를 배포할 경우 ODbL의 해당 조건을 따릅니다. 프로젝트 코드 전체의 라이선스가 ODbL로 바뀐다는 뜻은 아닙니다. |
-| OpenStreetMap 표준 지도 타일 | [타일 서버 이용 정책](https://operations.osmfoundation.org/policies/tiles/) | `frontend/js/app.js`에서 `tile.openstreetmap.org` 타일 요청 | 지도에 보이는 출처 표시를 유지하고, 캐시·요청 식별·Referer 정책을 준수하며 대량 다운로드·미리받기를 하지 않습니다. 무료 타일 서버의 무제한 이용이나 가용성은 보장되지 않습니다. |
-| Unsplash 배경사진 | [코드에 지정된 이미지 URL](https://images.unsplash.com/photo-1519501025264-65ba15a82390) · [Unsplash License](https://unsplash.com/license) | `frontend/css/styles.css`의 `.hero` 배경 | 일반 Unsplash License는 상업·비상업 이용을 허용하고 출처 표기를 권장하며, 실질적 수정 없는 사진 판매와 경쟁 이미지 서비스 구축을 제한합니다. **이 사진의 촬영자·원본 사진 페이지·개별 적용 조건 및 필요한 제3자 권리는 확인 필요**입니다. |
-| OpenAI API 및 AI 기사 초안 | [OpenAI Services Agreement](https://openai.com/policies/services-agreement/) | `backend/app/main.py`에서 입력된 Fact Sheet로 기사 초안 생성 | API 이용은 적용 서비스 약관·정책·계정 조건을 따릅니다. 입력 자료에 필요한 권한을 확보하고 출력의 정확성·적합성을 검토해야 합니다. 생성된 기사에 프로젝트 코드의 MIT 라이선스가 자동 적용되지는 않습니다. |
-
-**출처 표시 예시**
-
-- 기상청 자료: `출처: 기상청 ASOS 일자료 / 관측소: [관측소명·번호] / 관측 기간: [시작일~종료일] / 수집일: [실제 수집일] / 가공: 연평균·합계 등 산출 방식`
-- OpenWeather 자료: 적용 요금제에서 요구하는 `Weather data provided by OpenWeather` 문구, 공식 사이트 링크와 로고를 표시합니다.
-- OpenStreetMap 지도: `© OpenStreetMap contributors`를 지도에 표시하고 [저작권·라이선스 안내](https://www.openstreetmap.org/copyright)로 연결합니다.
-
-현재 지도 코드에는 OpenStreetMap 출처 문자열이 있지만 저작권 안내 링크는 포함되어 있지 않습니다. README에 적는 것만으로 실제 지도의 출처 표시 요건이 충족되지는 않으므로, 공개 전 구현과 표시 상태를 확인해야 합니다.
+| 자료·서비스 및 출처 | 사용 조건 |
+|---|---|
+| [기상청 ASOS 일자료](https://www.data.go.kr/data/15059093/openapi.do) | 출처표시 제1유형. 기상청과 원자료 출처를 표시하고 API 호출 한도를 준수합니다. |
+| [OpenWeather](https://openweathermap.org/faq#license) | 요금제별 출처 문구·링크·로고 표시 조건을 따릅니다. 적용 요금제와 저장·재배포 범위는 **확인 필요**입니다. |
+| [OpenStreetMap 지도 데이터](https://www.openstreetmap.org/copyright) | ODbL. 기여자 출처와 라이선스를 표시하고 데이터베이스 배포 조건을 따릅니다. |
+| [OpenStreetMap 지도 타일](https://operations.osmfoundation.org/policies/tiles/) | 지도에 출처를 표시하고 캐시·요청 정책을 준수하며 대량 다운로드·미리받기를 하지 않습니다. |
+| [Unsplash 배경사진](https://unsplash.com/license) | 일반 라이선스는 상업·비상업 이용을 허용하며 원본 그대로의 판매 등을 제한합니다. 해당 사진의 원저작자·개별 권리는 **확인 필요**입니다. |
+| [OpenAI API](https://openai.com/policies/services-agreement/) | 적용 약관을 준수하고 입력 자료의 이용 권한을 확보하며 생성 결과를 검수합니다. |
 
 ### 3. 데이터·기사 공개 시 확인 사항
 
