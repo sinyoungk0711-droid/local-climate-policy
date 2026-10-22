@@ -398,3 +398,10 @@ Invoke-RestMethod -Method Post -Uri ("http://127.0.0.1:8000/api/climate/collect?
 
 ### 테스트 현황
 이 저장소 변경은 코드와 마이그레이션 파일을 추가한 상태입니다. 이 작업 환경에서는 프로젝트의 MySQL 인스턴스, OpenWeather 키 및 로컬 브라우저에 접속할 수 없어 실서비스 API 호출이나 DB 통합 테스트를 실행한 것으로 보고하지 않습니다. 위 테스트 순서를 로컬에서 실행하고 응답 결과를 확인해야 합니다.
+
+## 이용 조건
+
+이 프로젝트의 코드는 MIT 라이선스를 따릅니다. 외부 자료에는 코드의 MIT 라이선스가 자동으로 적용되지 않으며, 각 출처의 사용 조건을 별도로 따릅니다.
+
+- **기상청 ASOS 일자료** — 출처: [기상자료개방포털](https://data.kma.go.kr/)·[공공데이터포털](https://www.data.go.kr/)의 기상청 ASOS 일자료 조회서비스 / 사용 조건: **확인 필요**.
+- **OpenWeather 현재 날씨 자료** — 출처: [OpenWeather](https://openweathermap.org/) / 사용 조건: **확인 필요**.
