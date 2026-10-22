@@ -223,7 +223,7 @@ py -m http.server 5500 --directory frontend
 프로젝트 루트에서 실행합니다.
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.14 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r backend/requirements.txt
