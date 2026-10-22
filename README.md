@@ -239,7 +239,7 @@ py -m http.server 5500 --directory frontend
 프로젝트 루트에서 실행합니다.
 
 ```powershell
-py -3.14 -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r backend/requirements.txt
@@ -446,3 +446,23 @@ Invoke-RestMethod -Method Post -Uri ("http://127.0.0.1:8000/api/climate/collect?
 - 결측·중복·관측소 변경과 집계 기준을 검수하고, 정책 시행 전후의 차이만으로 정책의 인과효과를 단정하지 않습니다.
 - AI 기사는 초안으로 취급하며 수치·인용·출처·저작권·개인정보를 사람이 확인한 뒤 게시합니다. 승인 상태 표시 자체가 외부 게시를 실행하거나 권리 검토를 보증하지는 않습니다.
 - API 키·DB 비밀번호·인증 비밀키는 공개하지 않습니다. 외부 서비스 약관과 데이터 이용 조건은 공개·재배포 시점에 다시 확인합니다.
+
+
+## 오류 수정 및 검증 (2026-10-22)
+
+- `backend.main:app`과 `backend.app.main:app`은 같은 API를 실행합니다. 예전 실행 파일의 가짜 로그인 토큰과 임의 기후값 반환을 제거했습니다.
+- `.env`는 실행 위치와 관계없이 프로젝트 루트에서 읽습니다.
+- 기후 조회는 마지막 요청 결과만 화면에 적용합니다. 별도 API 주소는 app.js 로딩 전에 `window.CLIMATE_API_BASE`로 지정할 수 있습니다.
+- 기사 근거·지역·형식 변경 시 자료 확인과 검수 상태를 해제합니다. 제목·본문 변경 시 대조 체크와 최종 승인을 해제합니다. 임시 저장을 복원한 뒤에는 다시 확인·검수해야 합니다. 생성 중 입력이 바뀌면 이전 요청의 결과는 적용하지 않습니다.
+- 유효한 기온에서 폭염·열대야가 발생하지 않은 날은 0으로 저장합니다. 결측 기온은 0으로 대체하지 않습니다. NaN·무한대는 저장하지 않습니다. 기존 수집 기간도 다시 수집해야 비발생일이 반영됩니다.
+- 새 DB의 `schema.sql`에 날씨·기사·검수 테이블을 포함했습니다. 기존 DB는 기존 안내대로 migration 003을 적용합니다.
+
+추가 설치 없이 실행하는 회귀 검사(프로젝트 루트):
+
+```powershell
+python -m unittest discover -s tests -v
+node --check frontend/js/app.js
+node tests/workflow.test.cjs
+```
+
+위 검사는 Python 문법, 모의 기상청 응답/DB를 이용한 수집 로직, 기사 검수 상태 무효화를 확인합니다. 실제 MySQL 연결, 외부 API, 브라우저 전체 동작 검사는 포함하지 않습니다.
