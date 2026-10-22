@@ -5,13 +5,14 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
 from datetime import date
 from .climate_data import router as climate_router
 from .auth import router as auth_router
 from .workflow import router as workflow_router
 from typing import Optional
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 app = FastAPI(
     title="우리동네 기후·정책 API",
