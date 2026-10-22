@@ -1,5 +1,6 @@
 import os
 import logging
+import math
 from datetime import datetime
 import requests
 import pymysql
@@ -138,16 +139,23 @@ def collect(start_date: str = Query(..., description="YYYYMMDD"),
                         except ValueError: continue
                         vals = [("tavg",item.get("avgTa"),"°C"),("tmin",item.get("minTa"),"°C"),
                                 ("tmax",item.get("maxTa"),"°C"),("rain_mm",item.get("sumRn"),"mm")]
-                        try:
-                            if item.get("maxTa") not in (None,"") and float(item["maxTa"]) >= 33: vals.append(("heat_day",1,"일"))
-                            if item.get("minTa") not in (None,"") and float(item["minTa"]) >= 25: vals.append(("tropical_day",1,"일"))
-                        except (TypeError,ValueError): pass
+                        # Store valid non-event days as 0; missing temperatures remain missing.
+                        for field, event_code, threshold in [("maxTa", "heat_day", 33), ("minTa", "tropical_day", 25)]:
+                            try:
+                                temperature = float(item.get(field))
+                                if math.isfinite(temperature):
+                                    vals.append((event_code, int(temperature >= threshold), "일"))
+                            except (TypeError, ValueError):
+                                pass
                         for metric_code, raw, unit in vals:
                             if raw in (None,""):
                                 missing_values_skipped += 1
                                 continue
                             try: value = float(raw)
                             except (TypeError,ValueError):
+                                missing_values_skipped += 1
+                                continue
+                            if not math.isfinite(value):
                                 missing_values_skipped += 1
                                 continue
                             cur.execute("""INSERT INTO climate_observations
