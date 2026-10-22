@@ -401,7 +401,81 @@ Invoke-RestMethod -Method Post -Uri ("http://127.0.0.1:8000/api/climate/collect?
 
 ## 이용 조건
 
-이 프로젝트의 코드는 MIT 라이선스를 따릅니다. 외부 자료에는 코드의 MIT 라이선스가 자동으로 적용되지 않으며, 각 출처의 사용 조건을 별도로 따릅니다.
+> 확인 기준: 2026-10-22. 저장소의 전체 폴더 목록과 19개 텍스트 파일을 검토한 결과입니다. `__pycache__`의 컴파일 파일 2개는 목록만 확인했으며, 실행 결과·사용자 PC의 설치 패키지·실제 DB 자료는 확인하지 않았습니다. 아래의 **확인 필요**는 사용 허가가 확인되었다는 뜻이 아닙니다.
 
-- **기상청 ASOS 일자료** — 출처: [기상자료개방포털](https://data.kma.go.kr/)·[공공데이터포털](https://www.data.go.kr/)의 기상청 ASOS 일자료 조회서비스 / 사용 조건: **확인 필요**.
-- **OpenWeather 현재 날씨 자료** — 출처: [OpenWeather](https://openweathermap.org/) / 사용 조건: **확인 필요**.
+### 1. 프로젝트 코드: MIT 라이선스
+
+이 저장소에서 제공하는 프로젝트 코드와 관련 문서는 [LICENSE](LICENSE)의 MIT 라이선스를 따릅니다. 저작권 표기는 `Copyright (c) 2026 Sinyoung Kang`입니다.
+
+- 코드의 사용·복사·수정·배포 및 상업적 이용을 허용합니다.
+- 코드의 복사본 또는 상당 부분을 배포할 때는 원래의 저작권 고지와 MIT 허가 고지를 포함해야 합니다.
+- 소프트웨어는 보증 없이 제공됩니다. 보증 및 책임 제한의 정확한 내용은 LICENSE 원문을 따릅니다.
+- 외부 데이터·지도·사진·글꼴·라이브러리·API 서비스에는 각각의 이용 조건이 적용됩니다. 이 저장소의 MIT 라이선스로 해당 자료를 다시 허가하는 것은 아닙니다.
+
+### 2. 코드에서 확인한 외부 자료·서비스
+
+각 행에 출처, 사용 위치와 확인된 이용 조건을 기록했습니다. API를 호출하는 코드가 있다는 사실만으로 실제 자료 수집이나 서비스 이용 계약까지 확인된 것은 아닙니다.
+
+| 자료·서비스 | 출처 | 저장소에서 확인한 용도 | 사용 조건 및 확인 상태 |
+|---|---|---|---|
+| 기상청 ASOS 일자료 | [공공데이터포털의 해당 API](https://www.data.go.kr/data/15059093/openapi.do) · [기상자료개방포털](https://data.kma.go.kr/) | `backend/app/climate_data.py`에서 일자료 수집, MySQL 저장, 연도별 집계·Fact Sheet 생성 | 공식 API 안내는 **공공저작물 출처표시 제1유형**입니다. 제공기관과 원자료 출처를 표시하고, 인증키·승인된 호출 한도를 준수합니다. 별도 파일·통계를 추가하면 해당 자료의 조건을 다시 확인합니다. |
+| OpenWeather Current Weather API | [자료 설명](https://openweathermap.org/current) · [라이선스·출처 표시 안내](https://openweathermap.org/faq#license) | `backend/app/workflow.py`에서 도시 중심 좌표의 현재 날씨와 원본 JSON 저장 | 가입 요금제와 계약에 따른 조건을 따릅니다. 공식 FAQ는 Free~Professional 요금제에 출처 문구·링크·로고 표시를 요구합니다. **이 프로젝트 계정의 실제 요금제, 저장·재배포 허용 범위 및 적용 라이선스는 확인 필요**입니다. |
+| OpenStreetMap 지도 데이터 | [OpenStreetMap 저작권·라이선스](https://www.openstreetmap.org/copyright) | `frontend/js/app.js`의 Leaflet 지도 배경 | 지도 데이터는 **ODbL**입니다. OpenStreetMap 기여자 출처와 라이선스 안내를 표시해야 합니다. 원본·파생 데이터베이스를 배포할 경우 ODbL의 해당 조건을 따릅니다. 프로젝트 코드 전체의 라이선스가 ODbL로 바뀐다는 뜻은 아닙니다. |
+| OpenStreetMap 표준 지도 타일 | [타일 서버 이용 정책](https://operations.osmfoundation.org/policies/tiles/) | `frontend/js/app.js`에서 `tile.openstreetmap.org` 타일 요청 | 지도에 보이는 출처 표시를 유지하고, 캐시·요청 식별·Referer 정책을 준수하며 대량 다운로드·미리받기를 하지 않습니다. 무료 타일 서버의 무제한 이용이나 가용성은 보장되지 않습니다. |
+| Unsplash 배경사진 | [코드에 지정된 이미지 URL](https://images.unsplash.com/photo-1519501025264-65ba15a82390) · [Unsplash License](https://unsplash.com/license) | `frontend/css/styles.css`의 `.hero` 배경 | 일반 Unsplash License는 상업·비상업 이용을 허용하고 출처 표기를 권장하며, 실질적 수정 없는 사진 판매와 경쟁 이미지 서비스 구축을 제한합니다. **이 사진의 촬영자·원본 사진 페이지·개별 적용 조건 및 필요한 제3자 권리는 확인 필요**입니다. |
+| OpenAI API 및 AI 기사 초안 | [OpenAI Services Agreement](https://openai.com/policies/services-agreement/) | `backend/app/main.py`에서 입력된 Fact Sheet로 기사 초안 생성 | API 이용은 적용 서비스 약관·정책·계정 조건을 따릅니다. 입력 자료에 필요한 권한을 확보하고 출력의 정확성·적합성을 검토해야 합니다. 생성된 기사에 프로젝트 코드의 MIT 라이선스가 자동 적용되지는 않습니다. |
+
+**출처 표시 예시**
+
+- 기상청 자료: `출처: 기상청 ASOS 일자료 / 관측소: [관측소명·번호] / 관측 기간: [시작일~종료일] / 수집일: [실제 수집일] / 가공: 연평균·합계 등 산출 방식`
+- OpenWeather 자료: 적용 요금제에서 요구하는 `Weather data provided by OpenWeather` 문구, 공식 사이트 링크와 로고를 표시합니다.
+- OpenStreetMap 지도: `© OpenStreetMap contributors`를 지도에 표시하고 [저작권·라이선스 안내](https://www.openstreetmap.org/copyright)로 연결합니다.
+
+현재 지도 코드에는 OpenStreetMap 출처 문자열이 있지만 저작권 안내 링크는 포함되어 있지 않습니다. README에 적는 것만으로 실제 지도의 출처 표시 요건이 충족되지는 않으므로, 공개 전 구현과 표시 상태를 확인해야 합니다.
+
+### 3. 프런트엔드 라이브러리·글꼴
+
+| 항목 | 출처 | 저장소에서 확인한 사용 방식 | 사용 조건 |
+|---|---|---|---|
+| Chart.js | [공식 라이선스](https://github.com/chartjs/Chart.js/blob/master/LICENSE.md) | `frontend/index.html`에서 jsDelivr CDN으로 로드 | **MIT**. 재배포 시 저작권·허가 고지를 유지합니다. CDN URL에 버전이 고정되어 있지 않아 실제 배포 버전의 고지는 별도 확인이 필요합니다. |
+| Leaflet 1.9.4 | [해당 버전 LICENSE](https://github.com/Leaflet/Leaflet/blob/v1.9.4/LICENSE) | `frontend/index.html`에서 unpkg CDN으로 CSS·JS 로드 | **BSD-2-Clause**. 소스·바이너리 재배포 시 해당 방식에 맞게 저작권·조건·면책 고지를 유지합니다. 지도 데이터·타일의 이용 조건은 별개입니다. |
+| Pretendard | [공식 LICENSE](https://github.com/orioncactus/pretendard/blob/main/LICENSE) | HTML의 Google Fonts 요청과 CSS의 글꼴 이름 참조 | 공식 글꼴은 **SIL OFL 1.1**입니다. 글꼴 자체의 단독 판매 금지, 재배포 시 라이선스·저작권 고지 유지 및 수정본의 예약 글꼴명 제한을 따릅니다. 현재 URL에서 실제 제공되는지와 로드된 파일은 **확인 필요**입니다. |
+| 맑은 고딕(Malgun Gothic) | 사용자 운영체제의 설치 글꼴 | CSS에서 대체 글꼴 이름으로 지정 | 저장소에는 해당 글꼴 파일이 포함되어 있지 않습니다. 파일을 별도로 동봉·웹폰트로 제공할 경우 허용 여부는 **확인 필요**입니다. |
+| jsDelivr·unpkg·Google Fonts | [jsDelivr](https://www.jsdelivr.com/) · [unpkg](https://unpkg.com/) · [Google Fonts](https://fonts.google.com/) | 외부 리소스 요청 주소 | 콘텐츠의 라이선스와 CDN 서비스의 이용 조건은 별개입니다. 서비스별 이용 조건·요청 제한은 **확인 필요**입니다. |
+
+### 4. Python 의존성
+
+아래는 `backend/requirements.txt`의 직접 의존성과 소스 코드의 추가 import를 기준으로 정리했습니다. 라이선스 링크는 공식 프로젝트의 확인한 원문이며, 버전이 고정되지 않은 패키지는 실제 배포 버전의 LICENSE·NOTICE도 확인해야 합니다.
+
+| 패키지 | 출처·라이선스 | 사용 조건 요약 |
+|---|---|---|
+| FastAPI | [MIT](https://github.com/fastapi/fastapi/blob/master/LICENSE) | 재배포 시 저작권·허가 고지 유지 |
+| Uvicorn | [BSD-3-Clause](https://github.com/Kludex/uvicorn/blob/main/LICENSE.md) | 저작권·조건·면책 고지 유지, 권리자·기여자 이름으로 무단 보증·홍보 금지 |
+| SQLAlchemy | [MIT](https://github.com/sqlalchemy/sqlalchemy/blob/main/LICENSE) | 재배포 시 저작권·허가 고지 유지; requirements에 선언되어 있으며 검토한 Python 소스에서는 직접 import를 확인하지 못함 |
+| PyMySQL | [MIT](https://github.com/PyMySQL/PyMySQL/blob/main/LICENSE) | 재배포 시 저작권·허가 고지 유지 |
+| python-dotenv | [BSD-3-Clause](https://github.com/theskumar/python-dotenv/blob/main/LICENSE) | 저작권·조건·면책 고지 유지, 라이선스가 지정한 명칭의 무단 보증·홍보 사용 금지 |
+| Requests | [Apache-2.0](https://github.com/psf/requests/blob/main/LICENSE) | 재배포 시 라이선스 사본·관련 고지 유지, 수정 파일에 변경 표시, NOTICE가 있으면 해당 고지 보존 |
+| pandas | [BSD-3-Clause](https://github.com/pandas-dev/pandas/blob/main/LICENSE) | 저작권·조건·면책 고지 유지, 무단 보증·홍보 금지; requirements에 선언되어 있으며 검토한 Python 소스에서는 직접 import를 확인하지 못함 |
+| pytest | [MIT](https://github.com/pytest-dev/pytest/blob/main/LICENSE) | 재배포 시 저작권·허가 고지 유지; requirements 선언만으로 테스트 실행을 의미하지 않음 |
+| HTTPX | [BSD-3-Clause](https://github.com/encode/httpx/blob/master/LICENSE.md) | 저작권·조건·면책 고지 유지, 무단 보증·홍보 금지 |
+| Pydantic | [MIT](https://github.com/pydantic/pydantic/blob/main/LICENSE) | 소스 코드에서 import 확인; 재배포 시 저작권·허가 고지 유지 |
+| Passlib | [공식 저작권·라이선스 안내](https://passlib.readthedocs.io/en/stable/copyright.html) | 별도 진입점 `backend/main.py`에서 import 확인. 본체의 BSD 3개 조건과 포함 코드별 고지를 따릅니다. 실제 설치 버전·사용 범위는 **확인 필요**입니다. |
+
+`uvicorn[standard]`의 추가 패키지, 각 패키지의 간접 의존성, Python·MySQL 등 실행 환경 전체의 라이선스 목록은 이 표에 포함하지 않았습니다. 실행 환경까지 묶어 배포할 경우 실제 설치 구성과 배포판 조건을 추가 확인해야 합니다. 이 표의 요약이나 링크만으로 원래 라이선스 고지 보존 의무를 대신할 수는 없습니다.
+
+### 5. 권장 출처와 예시 자료의 구분
+
+| 항목 | 출처·현재 확인 상태 | 이용 조건 |
+|---|---|---|
+| KOSIS 통계 | [국가통계포털](https://kosis.kr/); README의 권장 출처이며 구체적인 통계표 연동은 확인하지 못함 | 사용할 통계표·제공기관·원자료 URL을 정한 뒤 자료별 조건 **확인 필요** |
+| 지자체 정책 공고·기후대응계획·PDF | README의 수집 대상 예시이며 구체적인 지자체·문서명·원문 파일은 확인하지 못함 | 문서별 공공누리 유형, 제3자 사진·도표 권리 및 재배포 조건 **확인 필요** |
+| 기후·정책·정책 효과·지도 마커 예시 | HTML·JavaScript·백엔드에 포함된 시연용 값과 문구 | 공식 관측자료·실제 정책 현황·검증된 정책 성과로 인용하지 않습니다. 실제 자료로 교체하면 출처와 조건을 별도로 기록합니다. |
+| 사용자가 입력하는 Fact Sheet·원자료·시민 제안 | 입력자가 제공하는 자료; 저장소만으로 권리관계를 확인할 수 없음 | 입력·공개·AI API 전송에 필요한 권한, 개인정보와 제3자 저작물의 포함 여부 **확인 필요** |
+
+### 6. 데이터·기사 공개 시 확인 사항
+
+- 원자료명·제공기관·URL·관측 기간·단위·수집 시각과 가공 방법을 함께 기록합니다.
+- 기상청 대표 관측소 한 곳의 값을 시·도 전체 평균으로 표현하지 않으며, OpenWeather 현재 날씨를 장기 기후통계로 표현하지 않습니다.
+- 결측·중복·관측소 변경과 집계 기준을 검수하고, 정책 시행 전후의 차이만으로 정책의 인과효과를 단정하지 않습니다.
+- AI 기사는 초안으로 취급하며 수치·인용·출처·저작권·개인정보를 사람이 확인한 뒤 게시합니다. 승인 상태 표시 자체가 외부 게시를 실행하거나 권리 검토를 보증하지는 않습니다.
+- API 키·DB 비밀번호·인증 비밀키는 공개하지 않습니다. 외부 서비스 약관과 데이터 이용 조건은 공개·재배포 시점에 다시 확인합니다.
